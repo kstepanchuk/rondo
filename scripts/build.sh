@@ -24,11 +24,17 @@ if [ "${LEGACY_ZIP:-0}" = "1" ]; then
 fi
 
 # DMG: Rondo.app next to an Applications shortcut for drag-and-drop install.
+# Regenerate the background with scripts/make-dmg-background.swift.
 STAGE="$(mktemp -d)/Rondo"
 mkdir -p "$STAGE"
 cp -R "$APP" "$STAGE/"
 ln -s /Applications "$STAGE/Applications"
-hdiutil create -quiet -volname "Rondo $VERSION" -srcfolder "$STAGE" -fs HFS+ -format UDZO -ov "dist/Rondo-$VERSION.dmg"
+# Window layout (background, icon positions, size) made once in Finder; the
+# .DS_Store points at the background on a volume named "Rondo", so keep that name.
+mkdir -p "$STAGE/.background"
+cp Resources/dmg/background.tiff "$STAGE/.background/background.tiff"
+cp Resources/dmg/DS_Store "$STAGE/.DS_Store"
+hdiutil create -quiet -volname "Rondo" -srcfolder "$STAGE" -fs HFS+ -format UDZO -ov "dist/Rondo-$VERSION.dmg"
 
 # Checksums: the in-app updater verifies the DMG against Rondo-<ver>.dmg.sha256.
 (cd dist && for f in Rondo-"$VERSION".*; do case "$f" in *.sha256) ;; *) shasum -a 256 "$f" > "$f.sha256";; esac; done)

@@ -140,11 +140,11 @@ ZIP, 7Z ⁴, распаковать (ZIP, 7Z, RAR, TAR…), AirDrop, SHA-256 в 
 ## Сборка
 
 ```bash
-./scripts/build.sh 0.1.1     # dist/Rondo.app, .zip, .dmg и .sha256
+./scripts/build.sh 0.1.4     # dist/Rondo.app, Rondo-0.1.4.dmg и .sha256
 dist/Rondo.app/Contents/MacOS/Rondo --self-test ./samples [--office]
 ```
 
-Релиз: `git tag vX.Y.Z && git push --tags`, после чего GitHub Actions соберёт и опубликует DMG и ZIP.
+Релиз: `git tag vX.Y.Z && git push --tags`, после чего GitHub Actions соберёт и опубликует DMG.
 
 ## Благодарности
 
