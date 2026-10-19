@@ -185,8 +185,11 @@ struct SettingsView: View {
                     Spacer()
                     Button(L("Проверить", "Check")) { Updater.check(interactive: true) }
                 }
+                Toggle(L("Сохранять рядом с исходным файлом", "Save next to the original file"), isOn: $prefs.saveNextToSource)
                 HStack {
-                    Text(L("Результаты: ~/Downloads/Rondo", "Output: ~/Downloads/Rondo"))
+                    Text(prefs.saveNextToSource
+                         ? L("Иначе и для вложений: ~/Downloads/Rondo", "Otherwise and for attachments: ~/Downloads/Rondo")
+                         : L("Результаты: ~/Downloads/Rondo", "Output: ~/Downloads/Rondo"))
                     Spacer()
                     Button(L("Открыть", "Open")) { NSWorkspace.shared.open(Paths.output) }
                 }

@@ -16,6 +16,10 @@ final class Prefs: ObservableObject {
     @Published var revealResult: Bool {
         didSet { d.set(revealResult, forKey: "revealResult") }
     }
+    /// Save results next to the source file (default) instead of ~/Downloads/Rondo.
+    @Published var saveNextToSource: Bool {
+        didSet { d.set(saveNextToSource, forKey: "saveNextToSource") }
+    }
     @Published var history: [String] {
         didSet { d.set(history, forKey: "history") }
     }
@@ -24,6 +28,7 @@ final class Prefs: ObservableObject {
         theme = ThemeChoice(rawValue: d.string(forKey: "theme") ?? "") ?? .system
         language = LanguageChoice(rawValue: d.string(forKey: "language") ?? "") ?? .system
         revealResult = d.object(forKey: "revealResult") as? Bool ?? false
+        saveNextToSource = d.object(forKey: "saveNextToSource") as? Bool ?? true
         history = d.stringArray(forKey: "history") ?? []
     }
 
@@ -106,8 +111,18 @@ enum Paths {
         return make(n)
     }
 
+    /// Where results for `src` go: its own folder when that setting is on and the
+    /// folder is writable (not a mounted DMG etc.), otherwise ~/Downloads/Rondo.
+    static func dir(for src: URL?) -> URL {
+        if Prefs.shared.saveNextToSource, let src {
+            let parent = src.deletingLastPathComponent()
+            if FileManager.default.isWritableFile(atPath: parent.path) { return parent }
+        }
+        return output
+    }
+
     static func out(for src: URL, ext: String?, suffix: String = "") -> URL {
-        unique(output, src.deletingPathExtension().lastPathComponent + suffix, ext)
+        unique(dir(for: src), src.deletingPathExtension().lastPathComponent + suffix, ext)
     }
 
     static func temp() -> URL {

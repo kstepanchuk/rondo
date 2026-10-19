@@ -393,7 +393,7 @@ enum Catalog {
     }
 
     private static let collage = Operation(id: "collage", title: L("Коллаж", "Collage"), symbol: "square.grid.3x2") { urls in
-        let d = Paths.unique(Paths.output, L("Коллаж", "Collage"), "png")
+        let d = Paths.unique(Paths.dir(for: urls.first), L("Коллаж", "Collage"), "png")
         try Extras.collage(urls.sorted { $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending }, to: d)
         return [d]
     }
@@ -431,7 +431,7 @@ enum Catalog {
 
     private static let unpack = Operation(id: "unpack", title: L("Распаковать", "Extract"), symbol: "shippingbox") { urls in
         try urls.map { s in
-            let dir = Paths.unique(Paths.output, s.deletingPathExtension().lastPathComponent, nil)
+            let dir = Paths.unique(Paths.dir(for: s), s.deletingPathExtension().lastPathComponent, nil)
             try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
             let ext = s.pathExtension.lowercased()
             if ext == "zip" {
@@ -448,7 +448,7 @@ enum Catalog {
     private static let mergePDF = Operation(id: "merge", title: L("Объединить в PDF", "Merge to PDF"),
                                             symbol: "rectangle.stack") { urls in
         let sorted = urls.sorted { $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending }
-        let d = Paths.unique(Paths.output, L("Объединённый", "Merged"), "pdf")
+        let d = Paths.unique(Paths.dir(for: urls.first), L("Объединённый", "Merged"), "pdf")
         try PDF.merge(sorted, to: d)
         return [d]
     }
@@ -462,7 +462,7 @@ enum Catalog {
         for u in urls {
             try FileManager.default.copyItem(at: u, to: Paths.unique(folder, u.deletingPathExtension().lastPathComponent, u.pathExtension))
         }
-        let d = Paths.unique(Paths.output, name, "zip")
+        let d = Paths.unique(Paths.dir(for: urls.first), name, "zip")
         try Tools.run("/usr/bin/ditto", ["-c", "-k", "--sequesterRsrc", "--keepParent", folder.path, d.path])
         return [d]
     }
