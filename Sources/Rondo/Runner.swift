@@ -7,7 +7,7 @@ enum Runner {
 
     static func run(_ op: Operation, _ urls: [URL], at point: NSPoint? = nil) {
         busy += 1
-        let ring = point.map(ProgressRing.init(at:))
+        let ring = op.interactive ? nil : point.map(ProgressRing.init(at:))
         queue.async {
             let result = Result { try op.perform(urls) }
             DispatchQueue.main.async {

@@ -29,6 +29,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 try? v.renderPNG(hover: 1)?.write(to: dir.appendingPathComponent("menu-\(name).png"))
             }
             Prefs.shared.theme = .system
+            if args.contains("--settings") {
+                let host = NSHostingView(rootView: SettingsView())
+                host.frame = NSRect(x: 0, y: 0, width: 460, height: 1400)
+                let w = NSWindow(contentRect: host.frame, styleMask: [.titled], backing: .buffered, defer: false)
+                w.contentView = host
+                host.layoutSubtreeIfNeeded()
+                if let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) {
+                    host.cacheDisplay(in: host.bounds, to: rep)
+                    try? rep.representation(using: .png, properties: [:])?.write(to: dir.appendingPathComponent("settings.png"))
+                }
+            }
             return
         }
         let app = NSApplication.shared
@@ -126,7 +137,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc func openSettings() {
         if settingsWindow == nil {
-            let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 460, height: 520),
+            let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 460, height: 640),
                              styleMask: [.titled, .closable], backing: .buffered, defer: false)
             w.title = "Rondo"
             w.isReleasedWhenClosed = false
@@ -160,8 +171,8 @@ struct SettingsView: View {
             Section {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(L("Как пользоваться", "How to use")).font(.headline)
-                    Text(L("Тяните файл и зажмите ⇧ — конвертация, ⌃ — инструменты, ⌥ — действия. Отпустите над сектором. Центр — отмена.",
-                           "Drag a file and hold ⇧ to convert, ⌃ for tools, ⌥ for actions. Drop on a sector; the centre cancels."))
+                    Text(L("Тяните файл и зажмите \(Mode.convert.key) — конвертация, \(Mode.tools.key) — инструменты, \(Mode.actions.key) — действия. Отпустите над сектором. Центр — отмена.",
+                           "Drag a file and hold \(Mode.convert.key) to convert, \(Mode.tools.key) for tools, \(Mode.actions.key) for actions. Drop on a sector; the centre cancels."))
                     Text(L("Без мыши: выделите файлы в Finder и нажмите ⌃⌥Пробел (Tab — сменить режим). Или правый клик → Быстрые действия/Службы → Rondo.",
                            "Keyboard: select files in Finder and press ⌃⌥Space (Tab switches mode). Or right-click → Quick Actions/Services → Rondo."))
                 }
@@ -210,6 +221,8 @@ struct SettingsView: View {
                 }
             }
 
+            AdvancedSection()
+
             Section(L("Инструменты", "Tools")) {
                 tool("ffmpeg", Tools.ffmpeg != nil, L("аудио и видео", "audio & video"), "brew install ffmpeg")
                 tool("pandoc", Tools.pandoc != nil, "Markdown, EPUB", "brew install pandoc")
@@ -229,7 +242,7 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 460, height: 560)
+        .frame(width: 460, height: 640)
     }
 
     private func tool(_ name: String, _ ok: Bool, _ purpose: String, _ install: String?) -> some View {

@@ -22,7 +22,7 @@ enum Images {
         guard let dst = CGImageDestinationCreateWithURL(url as CFURL, type.identifier as CFString, 1, nil)
         else { throw RondoError(L("Формат не поддерживается", "Format not supported")) }
         var props = properties
-        props[kCGImageDestinationLossyCompressionQuality] = 0.9
+        props[kCGImageDestinationLossyCompressionQuality] = Settings.imageQuality
         CGImageDestinationAddImage(dst, image, props as CFDictionary)
         guard CGImageDestinationFinalize(dst) else { throw RondoError(L("Ошибка записи", "Write failed")) }
     }
@@ -41,7 +41,7 @@ enum Images {
         let (source, _) = try load(src)
         guard let dst = CGImageDestinationCreateWithURL(dest as CFURL, type.identifier as CFString, 1, nil)
         else { throw RondoError(L("Формат не поддерживается", "Format not supported")) }
-        var opts: [CFString: Any] = [kCGImageDestinationLossyCompressionQuality: 0.9]
+        var opts: [CFString: Any] = [kCGImageDestinationLossyCompressionQuality: Settings.imageQuality]
         if type == .jpeg { opts[kCGImageDestinationBackgroundColor] = CGColor(gray: 1, alpha: 1) }
         CGImageDestinationAddImageFromSource(dst, source, 0, opts as CFDictionary)
         guard CGImageDestinationFinalize(dst) else { throw RondoError(L("Ошибка записи", "Write failed")) }

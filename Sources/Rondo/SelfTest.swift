@@ -5,7 +5,7 @@ import AppKit
 enum SelfTest {
     static func run(dir: URL, office: Bool) {
         _ = NSApplication.shared
-        let skip: Set<String> = ["path", "reveal", "stt", "airdrop"]
+        let skip: Set<String> = ["path", "reveal", "stt", "airdrop", "v-edit", "a-edit"]
         let officeIDs: (String) -> Bool = { $0.hasPrefix("w-") || $0.hasPrefix("x-") || $0 == "ppt-pdf" || $0 == "md-pdf" }
         var failures = 0
 
@@ -27,6 +27,14 @@ enum SelfTest {
                         }
                     }
                 }
+            }
+            // Trim/crop export without the editor window.
+            for file in inputs where [.video, .audio].contains(Kind.of(file)) {
+                let video = Kind.of(file) == .video
+                let r = EditResult(start: 0.5, end: 2.0, crop: video ? CGRect(x: 10, y: 10, width: 200, height: 200) : nil)
+                let d = Paths.out(for: file, ext: video ? "mp4" : file.pathExtension, suffix: " trim")
+                do { try Editor.export(file, r, to: d, isVideo: video); print("ok   \(file.lastPathComponent) · trim → \(d.lastPathComponent)") }
+                catch { failures += 1; print("FAIL \(file.lastPathComponent) · trim: \(error.localizedDescription)") }
             }
             if inputs.count > 1 {
                 let images = inputs.filter { [.image, .pdf].contains(Kind.of($0)) }

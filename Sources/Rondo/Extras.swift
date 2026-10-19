@@ -47,13 +47,13 @@ enum Extras {
 
     // MARK: Web-ready photo
 
-    /// Longest side ≤ 2048 px, JPEG 80 %, no metadata.
+    /// Longest side ≤ 2048 px (configurable), JPEG 80 %, no metadata.
     static func webPhoto(_ src: URL, to dest: URL) throws {
         guard let source = CGImageSourceCreateWithURL(src as CFURL, nil),
               let img = CGImageSourceCreateThumbnailAtIndex(source, 0, [
                   kCGImageSourceCreateThumbnailFromImageAlways: true,
                   kCGImageSourceCreateThumbnailWithTransform: true,
-                  kCGImageSourceThumbnailMaxPixelSize: 2048,
+                  kCGImageSourceThumbnailMaxPixelSize: Settings.webMaxSize,
               ] as CFDictionary)
         else { throw RondoError(L("Не удалось прочитать изображение", "Cannot read image")) }
         guard let dst = CGImageDestinationCreateWithURL(dest as CFURL, UTType.jpeg.identifier as CFString, 1, nil)

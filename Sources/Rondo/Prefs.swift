@@ -132,3 +132,67 @@ enum Paths {
         return u
     }
 }
+
+// MARK: - Advanced settings (optional; defaults apply while the section is off)
+
+enum ModKey: String, CaseIterable, Identifiable {
+    case shift, control, option, command
+    var id: String { rawValue }
+    var flag: NSEvent.ModifierFlags {
+        switch self { case .shift: return .shift; case .control: return .control; case .option: return .option; case .command: return .command }
+    }
+    var symbol: String {
+        switch self { case .shift: return "⇧"; case .control: return "⌃"; case .option: return "⌥"; case .command: return "⌘" }
+    }
+}
+
+enum VideoQuality: String, CaseIterable, Identifiable {
+    case high, medium, compact
+    var id: String { rawValue }
+    var crf: String { switch self { case .high: return "18"; case .medium: return "23"; case .compact: return "28" } }
+}
+
+final class AdvancedPrefs: ObservableObject {
+    static let shared = AdvancedPrefs()
+    private let d = UserDefaults.standard
+
+    @Published var enabled: Bool { didSet { d.set(enabled, forKey: "adv.enabled") } }
+    @Published var imageQuality: Double { didSet { d.set(imageQuality, forKey: "adv.imageQuality") } }
+    @Published var webMaxSize: Int { didSet { d.set(webMaxSize, forKey: "adv.webMaxSize") } }
+    @Published var videoQuality: VideoQuality { didSet { d.set(videoQuality.rawValue, forKey: "adv.videoQuality") } }
+    @Published var keyConvert: ModKey { didSet { d.set(keyConvert.rawValue, forKey: "adv.keyConvert") } }
+    @Published var keyTools: ModKey { didSet { d.set(keyTools.rawValue, forKey: "adv.keyTools") } }
+    @Published var keyActions: ModKey { didSet { d.set(keyActions.rawValue, forKey: "adv.keyActions") } }
+    /// Operation ids hidden from the wheel.
+    @Published var hidden: Set<String> { didSet { d.set(Array(hidden), forKey: "adv.hidden") } }
+    /// Custom sector order per "<kind>.<mode>" key.
+    @Published var order: [String: [String]] { didSet { d.set(order, forKey: "adv.order") } }
+
+    private init() {
+        enabled = d.bool(forKey: "adv.enabled")
+        imageQuality = d.object(forKey: "adv.imageQuality") as? Double ?? 0.9
+        webMaxSize = d.object(forKey: "adv.webMaxSize") as? Int ?? 2048
+        videoQuality = VideoQuality(rawValue: d.string(forKey: "adv.videoQuality") ?? "") ?? .medium
+        keyConvert = ModKey(rawValue: d.string(forKey: "adv.keyConvert") ?? "") ?? .shift
+        keyTools = ModKey(rawValue: d.string(forKey: "adv.keyTools") ?? "") ?? .control
+        keyActions = ModKey(rawValue: d.string(forKey: "adv.keyActions") ?? "") ?? .option
+        hidden = Set(d.stringArray(forKey: "adv.hidden") ?? [])
+        order = d.dictionary(forKey: "adv.order") as? [String: [String]] ?? [:]
+    }
+
+    func resetLayout() { hidden = []; order = [:] }
+}
+
+/// Effective values: advanced ones when enabled, defaults otherwise.
+enum Settings {
+    private static var a: AdvancedPrefs { .shared }
+    static var imageQuality: Double { a.enabled ? a.imageQuality : 0.9 }
+    static var webMaxSize: Int { a.enabled ? a.webMaxSize : 2048 }
+    static var videoCRF: String { a.enabled ? a.videoQuality.crf : "23" }
+    static func key(_ mode: Mode) -> ModKey {
+        guard a.enabled else { return [ModKey.shift, .control, .option][mode.rawValue] }
+        switch mode { case .convert: return a.keyConvert; case .tools: return a.keyTools; case .actions: return a.keyActions }
+    }
+    static func isHidden(_ id: String) -> Bool { a.enabled && a.hidden.contains(id) }
+    static func order(_ key: String) -> [String]? { a.enabled ? a.order[key] : nil }
+}

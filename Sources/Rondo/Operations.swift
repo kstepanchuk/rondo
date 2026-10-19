@@ -11,21 +11,16 @@ enum Mode: Int, CaseIterable {
         case .actions: return L("Действия", "Actions")
         }
     }
-    var key: String {
-        switch self { case .convert: return "⇧"; case .tools: return "⌃"; case .actions: return "⌥" }
-    }
+    var key: String { Settings.key(self).symbol }
 
     /// The mode for the currently held modifier, if any.
     static func from(_ flags: NSEvent.ModifierFlags) -> Mode? {
-        if flags.contains(.shift) { return .convert }
-        if flags.contains(.control) { return .tools }
-        if flags.contains(.option) { return .actions }
-        return nil
+        Mode.allCases.first { flags.contains(Settings.key($0).flag) }
     }
 }
 
 enum Kind: Hashable {
-    case image, video, audio, pdf, document, markdown, spreadsheet, csv, presentation, subtitle, archive, other
+    case image, raw, video, audio, pdf, document, markdown, spreadsheet, csv, presentation, subtitle, archive, other
 
     static func of(_ url: URL) -> Kind {
         let ext = url.pathExtension.lowercased()
@@ -41,6 +36,7 @@ enum Kind: Hashable {
         default: break
         }
         guard let t = UTType(filenameExtension: ext) else { return .other }
+        if t.conforms(to: .rawImage) { return .raw }
         if t.conforms(to: .image) { return .image }
         if t.conforms(to: .movie) || t.conforms(to: .video) { return .video }
         if t.conforms(to: .audio) { return .audio }
@@ -58,6 +54,8 @@ struct Operation {
     let id: String
     let title: String
     let symbol: String
+    /// Opens its own window (no progress ring at the drop point while the user edits).
+    var interactive = false
     /// Receives all dropped files at once; returns the files it produced.
     let perform: ([URL]) throws -> [URL]
 }
@@ -73,8 +71,8 @@ enum Catalog {
         // Batch-only operations that make one output from many inputs.
         var batch: [Operation] = []
         if count > 1 {
-            if mode != .actions, unique.allSatisfy({ $0 == .pdf || $0 == .image }) { batch.append(mergePDF) }
-            if mode == .tools, unique.allSatisfy({ $0 == .image }) { batch.append(collage) }
+            if mode != .actions, unique.allSatisfy({ $0 == .pdf || $0 == .image || $0 == .raw }) { batch.append(mergePDF) }
+            if mode == .tools, unique.allSatisfy({ $0 == .image || $0 == .raw }) { batch.append(collage) }
             if mode == .actions { batch.append(zipAll) }
         }
 
@@ -85,7 +83,20 @@ enum Catalog {
             common = common.filter { ids.contains($0.id) }
         }
         if count > 1 && mode == .actions { common.removeAll { $0.id == "zip" } }
-        return Array((batch + common).prefix(12))
+        var all = (batch + common).filter { !Settings.isHidden($0.id) }
+        if unique.count == 1, let order = Settings.order(layoutKey(first, mode)) {
+            let rank = Dictionary(uniqueKeysWithValues: order.enumerated().map { ($1, $0) })
+            all = all.enumerated().sorted { (rank[$0.element.id] ?? 1000 + $0.offset) < (rank[$1.element.id] ?? 1000 + $1.offset) }
+                .map(\.element)
+        }
+        return Array(all.prefix(12))
+    }
+
+    static func layoutKey(_ kind: Kind, _ mode: Mode) -> String { "\(kind).\(mode)" }
+
+    /// Every operation for a kind/mode, ignoring hidden/order (for the settings editor).
+    static func allOperations(_ kind: Kind, _ mode: Mode) -> [Operation] {
+        list(kind, mode)
     }
 
     private static func list(_ kind: Kind, _ mode: Mode) -> [Operation] {
@@ -110,12 +121,15 @@ enum Catalog {
                     try Extras.icons($0, into: $1)
                 },
             ]
+        case .raw:
+            return [rawConv("JPG", .jpeg), rawConv("HEIC", .heic), rawConv(L("TIFF 16 бит", "TIFF 16-bit"), .tiff, ext: "tiff"),
+                    rawConv("PNG", .png), rawConv("AVIF", UTType("public.avif")!)]
         case .video:
             guard ff else { return [] }
             return [
-                media("MP4", "mp4", ["-c:v", "libx264", "-preset", "medium", "-crf", "23", "-pix_fmt", "yuv420p",
+                media("MP4", "mp4", ["-c:v", "libx264", "-preset", "medium", "-crf", Settings.videoCRF, "-pix_fmt", "yuv420p",
                                      "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart"]),
-                media("MOV", "mov", ["-c:v", "libx264", "-crf", "20", "-pix_fmt", "yuv420p", "-c:a", "aac"]),
+                media("MOV", "mov", ["-c:v", "libx264", "-crf", Settings.videoCRF, "-pix_fmt", "yuv420p", "-c:a", "aac"]),
                 media("WebM", "webm", ["-c:v", "libvpx-vp9", "-crf", "32", "-b:v", "0", "-c:a", "libopus"]),
                 media("GIF", "gif", ["-vf", "fps=12,scale='min(720,iw)':-2:flags=lanczos,split[a][b];[a]palettegen[p];[b][p]paletteuse",
                                      "-loop", "0"], symbol: "photo.stack"),
@@ -226,6 +240,7 @@ enum Catalog {
         case .video:
             var ops: [Operation] = []
             if ff {
+                ops.append(editOp(video: true))
                 ops += [
                     media(L("Сжать", "Compress"), nil, ["-c:v", "libx264", "-preset", "slow", "-crf", "28", "-pix_fmt", "yuv420p",
                                                         "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart"],
@@ -248,6 +263,7 @@ enum Catalog {
         case .audio:
             var ops: [Operation] = []
             if ff {
+                ops.append(editOp(video: false))
                 ops += [
                     media(L("Моно", "Mono"), nil, ["-ac", "1"], symbol: "speaker.wave.1", id: "a-mono", suffix: L(" моно", " mono")),
                     media(L("Выровнять громкость", "Normalize"), nil, ["-af", "loudnorm=I=-16:TP=-1.5:LRA=11"],
@@ -259,6 +275,24 @@ enum Catalog {
             }
             ops.append(transcribe)
             return ops
+        case .raw:
+            return [
+                single("raw-preview", L("Быстрое превью", "Quick preview"), "bolt", ext: "jpg", suffix: L(" превью", " preview")) {
+                    try Raw.embeddedPreview($0, to: $1)
+                },
+                single("web", L("Для веба", "Web-ready"), "globe", ext: "jpg", suffix: " web") { try Extras.webPhoto($0, to: $1) },
+                Operation(id: "raw-info", title: L("Данные съёмки", "Shot info"), symbol: "camera") { urls in
+                    let text = try urls.map { "\($0.lastPathComponent): \(try Raw.shotInfo($0))" }.joined(separator: "\n")
+                    DispatchQueue.main.async {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(text, forType: .string)
+                    }
+                    return []
+                },
+                single("palette", L("Палитра", "Palette"), "paintpalette", ext: "png", suffix: L(" палитра", " palette")) {
+                    try Extras.palette($0, to: $1)
+                },
+            ]
         case .pdf:
             return [explodePDF, ocr, qr,
                     single("pdf-split", L("По страницам", "Split pages"), "doc.on.doc", ext: nil, suffix: L(" страницы", " pages")) {
@@ -341,6 +375,24 @@ enum Catalog {
                 try body(s, d)
                 return d
             }
+        }
+    }
+
+    /// "Trim…" (audio/video) / "Trim & crop…" (video): opens the editor for the first file.
+    private static func editOp(video: Bool) -> Operation {
+        Operation(id: video ? "v-edit" : "a-edit",
+                  title: video ? L("Обрезать и кроп…", "Trim & crop…") : L("Обрезать…", "Trim…"),
+                  symbol: video ? "crop" : "scissors", interactive: true) { urls in
+            guard let s = urls.first, let r = Editor.edit(s, isVideo: video) else { return [] }
+            let d = Paths.out(for: s, ext: video ? "mp4" : s.pathExtension, suffix: L(" обрезка", " trimmed"))
+            try Editor.export(s, r, to: d, isVideo: video)
+            return [d]
+        }
+    }
+
+    private static func rawConv(_ title: String, _ type: UTType, ext: String? = nil) -> Operation {
+        single("raw-" + (ext ?? title.lowercased()), title, "camera.aperture", ext: ext ?? title.lowercased()) { s, d in
+            try Raw.convert(s, to: d, type: type)
         }
     }
 
