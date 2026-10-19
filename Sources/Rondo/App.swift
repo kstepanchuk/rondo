@@ -20,13 +20,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             // Writes menu-dark.png and menu-light.png (image kind, Convert mode) for the README.
             _ = NSApplication.shared
             let dir = URL(fileURLWithPath: args[i + 1])
+            let english = args.contains("--english")
+            if english { Prefs.shared.language = .en }
+            defer { if english { Prefs.shared.language = .system } }
             for (name, theme) in [("dark", ThemeChoice.dark), ("light", ThemeChoice.light)] {
                 Prefs.shared.theme = theme
                 let v = RadialView(frame: NSRect(x: 0, y: 0, width: 380, height: 380))
                 v.palette = .current
                 v.mode = .convert
                 v.operations = Catalog.operations(kinds: [.image], mode: .convert)
-                try? v.renderPNG(hover: 1)?.write(to: dir.appendingPathComponent("menu-\(name).png"))
+                try? v.renderPNG(hover: 1)?.write(to: dir.appendingPathComponent("menu-\(name)\(english ? "-en" : "").png"))
             }
             Prefs.shared.theme = .system
             if args.contains("--settings") {
