@@ -2,7 +2,7 @@ import AppKit
 import CryptoKit
 
 /// Self-updater backed by GitHub Releases of kstepanchuk/rondo.
-/// Each release carries `Rondo-<ver>.zip` and `Rondo-<ver>.zip.sha256`.
+/// Each release carries `Rondo-<ver>.dmg` and `Rondo-<ver>.dmg.sha256`.
 /// The update is applied only if the checksum matches, the new bundle has the
 /// same bundle id and its code signature verifies.
 enum Updater {
@@ -61,14 +61,14 @@ enum Updater {
                     if interactive { alert(L("У вас последняя версия", "You're up to date"), "Rondo \(currentVersion)") }
                     return
                 }
-                guard let zip = rel.assets.first(where: { $0.name == "Rondo-\(version).zip" }),
-                      let sum = rel.assets.first(where: { $0.name == "Rondo-\(version).zip.sha256" }) else { return }
-                offer(version: version, notes: rel.body ?? "", zip: zip.browser_download_url, sum: sum.browser_download_url)
+                guard let dmg = rel.assets.first(where: { $0.name == "Rondo-\(version).dmg" }),
+                      let sum = rel.assets.first(where: { $0.name == "Rondo-\(version).dmg.sha256" }) else { return }
+                offer(version: version, notes: rel.body ?? "", dmg: dmg.browser_download_url, sum: sum.browser_download_url)
             }
         }.resume()
     }
 
-    private static func offer(version: String, notes: String, zip: URL, sum: URL) {
+    private static func offer(version: String, notes: String, dmg: URL, sum: URL) {
         NSApp.activate(ignoringOtherApps: true)
         let a = NSAlert()
         a.messageText = L("Доступна версия \(version)", "Version \(version) is available")
@@ -79,7 +79,7 @@ enum Updater {
         Toast.show("Rondo", sub: L("Загружаю обновление…", "Downloading update…"))
         DispatchQueue.global().async {
             do {
-                try install(zip: zip, sum: sum)
+                try install(dmg: dmg, sum: sum)
             } catch {
                 DispatchQueue.main.async { alert(L("Обновление не установлено", "Update failed"), error.localizedDescription) }
             }
@@ -102,26 +102,11 @@ enum Updater {
         return out
     }
 
-    private static func install(zip: URL, sum: URL) throws {
-        let data = try download(zip)
+    private static func install(dmg: URL, sum: URL) throws {
+        let data = try download(dmg)
         let expected = String(decoding: try download(sum), as: UTF8.self)
-            .split(separator: " ").first.map(String.init)?.lowercased() ?? ""
-        let actual = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
-        guard !expected.isEmpty, expected == actual else {
-            throw RondoError(L("Контрольная сумма не совпала", "Checksum mismatch"))
-        }
-
         let tmp = Paths.temp()
-        let zipFile = tmp.appendingPathComponent("update.zip")
-        try data.write(to: zipFile)
-        try Tools.run("/usr/bin/ditto", ["-x", "-k", zipFile.path, tmp.path])
-        let newApp = tmp.appendingPathComponent("Rondo.app")
-        guard let b = Bundle(url: newApp), b.bundleIdentifier == Bundle.main.bundleIdentifier else {
-            throw RondoError(L("В архиве не Rondo", "Archive doesn't contain Rondo"))
-        }
-        try Tools.run("/usr/bin/codesign", ["--verify", "--deep", "--strict", newApp.path])
-        try? Tools.run("/usr/bin/xattr", ["-dr", "com.apple.quarantine", newApp.path])
-
+        let newApp = try prepare(dmgData: data, expectedSHA: expected, in: tmp)
         // Swap the bundle after we quit, then relaunch.
         let current = Bundle.main.bundleURL
         let pid = ProcessInfo.processInfo.processIdentifier
@@ -135,6 +120,32 @@ enum Updater {
         p.arguments = ["-c", script, "rondo-update", current.path, newApp.path]
         try p.run()
         DispatchQueue.main.async { NSApp.terminate(nil) }
+    }
+
+    /// Verifies the DMG checksum, copies Rondo.app out of it into `dir` and checks
+    /// bundle id and code signature. Returns the extracted app.
+    static func prepare(dmgData data: Data, expectedSHA: String, in dir: URL) throws -> URL {
+        let expected = expectedSHA.split(separator: " ").first.map(String.init)?.lowercased() ?? ""
+        let actual = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+        guard !expected.isEmpty, expected == actual else {
+            throw RondoError(L("Контрольная сумма не совпала", "Checksum mismatch"))
+        }
+        let image = dir.appendingPathComponent("update.dmg")
+        let mount = dir.appendingPathComponent("mnt", isDirectory: true)
+        try data.write(to: image)
+        try FileManager.default.createDirectory(at: mount, withIntermediateDirectories: true)
+        try Tools.run("/usr/bin/hdiutil", ["attach", "-nobrowse", "-readonly", "-noautoopen",
+                                           "-mountpoint", mount.path, image.path])
+        defer { try? Tools.run("/usr/bin/hdiutil", ["detach", "-quiet", "-force", mount.path]) }
+
+        let newApp = dir.appendingPathComponent("Rondo.app")
+        try Tools.run("/usr/bin/ditto", [mount.appendingPathComponent("Rondo.app").path, newApp.path])
+        guard let b = Bundle(url: newApp), b.bundleIdentifier == Bundle.main.bundleIdentifier ?? "io.github.kstepanchuk.rondo" else {
+            throw RondoError(L("В образе не Rondo", "Disk image doesn't contain Rondo"))
+        }
+        try Tools.run("/usr/bin/codesign", ["--verify", "--deep", "--strict", newApp.path])
+        try? Tools.run("/usr/bin/xattr", ["-dr", "com.apple.quarantine", newApp.path])
+        return newApp
     }
 
     private static func alert(_ title: String, _ text: String) {

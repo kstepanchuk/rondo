@@ -16,7 +16,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if let i = args.firstIndex(of: "--self-test"), i + 1 < args.count {
             return SelfTest.run(dir: URL(fileURLWithPath: args[i + 1]), office: args.contains("--office"))
         }
-        if let i = args.firstIndex(of: "--render-menu"), i + 1 < args.count {
+        if let i = args.firstIndex(of: "--verify-update"), i + 1 < args.count {
+            // Runs the updater's checks on a local DMG (needs <dmg>.sha256 next to it).
+            let dmg = URL(fileURLWithPath: args[i + 1])
+            do {
+                let sum = try String(contentsOf: dmg.appendingPathExtension("sha256"), encoding: .utf8)
+                let app = try Updater.prepare(dmgData: try Data(contentsOf: dmg), expectedSHA: sum, in: Paths.temp())
+                print("ok   update ready: \(app.path) (\(Bundle(url: app)?.object(forInfoDictionaryKey: "CFBundleShortVersionString") ?? "?"))")
+                exit(0)
+            } catch { print("FAIL update: \(error.localizedDescription)"); exit(1) }
+        }
+                if let i = args.firstIndex(of: "--render-menu"), i + 1 < args.count {
             // Writes menu-dark.png and menu-light.png (image kind, Convert mode) for the README.
             _ = NSApplication.shared
             let dir = URL(fileURLWithPath: args[i + 1])
