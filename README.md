@@ -84,6 +84,7 @@ brew install ffmpeg pandoc sevenzip
 | Что | Во что |
 |---|---|
 | Изображения | JPG, PNG, HEIC, AVIF, TIFF, GIF, PDF, иконки **ICNS + ICO** |
+| 📷 RAW с камер | JPG, HEIC, **TIFF 16 бит**, PNG, AVIF с сохранением EXIF. Canon CR2/CR3, Nikon NEF, Sony ARW, Fuji RAF, DNG, Olympus, Panasonic и др. |
 | Видео ¹ | MP4, MOV, WebM, GIF, MP3 |
 | Аудио ¹ | MP3, WAV, M4A, FLAC, OGG |
 | Документы | DOCX, RTF, TXT, HTML, ODT · PDF ³ · Markdown, EPUB ² |
@@ -99,10 +100,11 @@ brew install ffmpeg pandoc sevenzip
 <summary><b>🛠 Инструменты</b></summary>
 
 - **Изображения**: убрать фон, уменьшить, повернуть, отразить, удалить EXIF и GPS, распознать текст (OCR), прочитать QR-код, подготовить «для веба» (≤ 2048 px, JPEG 80 %), извлечь палитру цветов.
+- **RAW**: быстрое превью (встроенный JPEG камеры), данные съёмки в буфер (камера, объектив, выдержка, диафрагма, ISO), «для веба», палитра.
 - **PDF**: разложить в PNG, OCR, QR, разбить по страницам, сжать.
 - **Презентации** ³: разложить в PNG. Слайды 16:9 получаются ровно **1920×1080**.
-- **Видео** ¹: сжать, убрать звук, первый кадр, извлечь субтитры, вертикаль **9:16** для Reels и Shorts, расшифровать речь.
-- **Аудио** ¹: моно, выровнять громкость, убрать тишину, расшифровать речь.
+- **Видео** ¹: **обрезать по времени и кадрировать** (16:9, 9:16, 1:1, 4:5) в редакторе, как в QuickTime, сжать, убрать звук, первый кадр, извлечь субтитры, вертикаль **9:16** для Reels и Shorts, расшифровать речь.
+- **Аудио** ¹: **обрезать по времени**, моно, выровнять громкость, убрать тишину, расшифровать речь.
 - **Несколько файлов**: объединить в PDF, коллаж.
 
 </details>
@@ -124,6 +126,7 @@ ZIP, 7Z ⁴, распаковать (ZIP, 7Z, RAR, TAR…), AirDrop, SHA-256 в 
 - Язык: как в системе, русский или английский.
 - Куда сохранять: **рядом с исходным файлом** (по умолчанию) или в `~/Downloads/Rondo`.
 - Запуск при входе в систему, показ результата в Finder, автообновления.
+- **Расширенные** (по желанию): качество JPG/HEIC и видео, размер «для веба», переназначение клавиш режимов (⇧ ⌃ ⌥ ⌘), порядок и скрытие секторов колеса для каждого типа файлов.
 - Статус движков и команды для их установки в один клик.
 
 ## Приватность и безопасность
@@ -159,6 +162,7 @@ brew install --cask kstepanchuk/rondo/rondo
 
 Or grab the DMG from [Releases](https://github.com/kstepanchuk/rondo/releases/latest).
 
+- Camera RAW (CR2/CR3, NEF, ARW, RAF, DNG…) to JPG/HEIC/16-bit TIFF with EXIF; trim & crop editor for audio and video.
 - Images, PDF, OCR, QR, background removal, palettes, app icons, archives and checksums work with nothing else installed.
 - Audio and video need `ffmpeg`, Markdown and EPUB need `pandoc`. Office documents use Word, Excel and PowerPoint (or Keynote).
 - Results are saved next to the original by default. Originals are never overwritten.
