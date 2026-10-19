@@ -15,7 +15,7 @@
 	<key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
 	<key>NSHumanReadableCopyright</key><string>MIT License</string>
 	<key>NSAppleEventsUsageDescription</key>
-	<string>Rondo управляет Finder, Word, Excel, PowerPoint и Keynote, чтобы брать выделенные файлы и конвертировать документы. / Rondo controls Finder and Office apps to read the selection and convert documents.</string>
+	<string>Rondo управляет Finder, Word, Excel, PowerPoint, Keynote и Терминалом: берёт выделенные файлы, конвертирует документы и устанавливает дополнительные движки. / Rondo controls Finder, Office apps and Terminal to read the selection, convert documents and install optional engines.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Rondo расшифровывает аудио и видео в текст на этом Mac. / Rondo transcribes audio and video on this Mac.</string>
 	<key>NSServices</key>

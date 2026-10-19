@@ -33,8 +33,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
             Prefs.shared.theme = .system
             if args.contains("--settings") {
-                let host = NSHostingView(rootView: SettingsView())
-                host.frame = NSRect(x: 0, y: 0, width: 460, height: 1400)
+                let host = NSHostingView(rootView: SettingsView(height: 1500))
+                host.frame = NSRect(x: 0, y: 0, width: 460, height: 1500)
                 let w = NSWindow(contentRect: host.frame, styleMask: [.titled], backing: .buffered, defer: false)
                 w.contentView = host
                 host.layoutSubtreeIfNeeded()
@@ -164,10 +164,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 // MARK: - Settings
 
 struct SettingsView: View {
+    var height: CGFloat = 640
     @ObservedObject private var prefs = Prefs.shared
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
     @State private var languageChanged = false
     @State private var autoUpdate = Updater.autoCheck
+    @State private var toolsRefresh = 0
 
     var body: some View {
         Form {
@@ -226,14 +228,23 @@ struct SettingsView: View {
 
             AdvancedSection()
 
-            Section(L("Инструменты", "Tools")) {
-                tool("ffmpeg", Tools.ffmpeg != nil, L("аудио и видео", "audio & video"), "brew install ffmpeg")
-                tool("pandoc", Tools.pandoc != nil, "Markdown, EPUB", "brew install pandoc")
-                tool("7-Zip", Tools.sevenZip != nil, L("архивы 7z", "7z archives"), "brew install sevenzip")
+            Section {
+                let _ = toolsRefresh  // re-evaluate tool status when the window comes back
+                tool("ffmpeg", Tools.ffmpeg != nil, L("аудио и видео", "audio & video"), "ffmpeg")
+                tool("pandoc", Tools.pandoc != nil, "Markdown, EPUB", "pandoc")
+                tool("7-Zip", Tools.sevenZip != nil, L("архивы 7z", "7z archives"), "sevenzip")
                 tool("Microsoft Word", Tools.word, "DOCX → PDF", nil)
                 tool("Microsoft Excel", Tools.excel, "XLSX ⇄ CSV, PDF", nil)
                 tool("PowerPoint / Keynote", Tools.powerPoint || Tools.keynote, L("слайды → PDF, PNG", "slides → PDF, PNG"), nil)
+            } header: {
+                Text(L("Инструменты", "Tools"))
+            } footer: {
+                Text(L("«Установить» откроет Терминал и запустит установку через Homebrew. Когда она закончится, вернитесь сюда — статус обновится сам.",
+                       "Install opens Terminal and runs Homebrew. When it finishes, come back here and the status updates."))
+                    .font(.caption).foregroundStyle(.secondary)
             }
+            .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in toolsRefresh += 1 }
+            .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in toolsRefresh += 1 }
 
             Section {
                 HStack {
@@ -245,25 +256,70 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 460, height: 640)
+        .frame(width: 460, height: height)
     }
 
-    private func tool(_ name: String, _ ok: Bool, _ purpose: String, _ install: String?) -> some View {
-        HStack {
+    /// `package`: Homebrew formula to install when missing (nil for apps like Office).
+    private func tool(_ name: String, _ ok: Bool, _ purpose: String, _ package: String?) -> some View {
+        HStack(alignment: .center) {
             Image(systemName: ok ? "checkmark.circle.fill" : "xmark.circle")
                 .foregroundStyle(ok ? .green : .secondary)
-            VStack(alignment: .leading) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(name)
-                Text(purpose).font(.caption).foregroundStyle(.secondary)
+                Text(ok ? purpose : purpose + L(" — не установлен", " — not installed"))
+                    .font(.caption).foregroundStyle(.secondary)
+                if !ok, let package {
+                    HStack(spacing: 4) {
+                        Text("brew install \(package)")
+                            .font(.system(.caption, design: .monospaced))
+                            .textSelection(.enabled)
+                            .padding(.horizontal, 6).padding(.vertical, 2)
+                            .background(RoundedRectangle(cornerRadius: 4).fill(Color.secondary.opacity(0.15)))
+                        Button {
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString("brew install \(package)", forType: .string)
+                        } label: { Image(systemName: "doc.on.doc") }
+                            .buttonStyle(.borderless)
+                            .help(L("Скопировать команду", "Copy command"))
+                    }
+                }
             }
             Spacer()
-            if !ok, let install {
-                Button(L("Копировать", "Copy")) {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(install, forType: .string)
-                }
-                .help(install)
+            if !ok, let package {
+                Button(L("Установить", "Install")) { Installer.install(package) }
+                    .buttonStyle(.borderedProminent)
+                    .help(L("Откроет Терминал и выполнит brew install \(package)",
+                            "Opens Terminal and runs brew install \(package)"))
             }
+        }
+    }
+}
+
+
+/// Installs an optional engine with Homebrew in a visible Terminal window.
+enum Installer {
+    static func install(_ package: String) {
+        guard let brew = Tools.find("brew") else {
+            // No Homebrew yet: send the user to the official instructions.
+            NSWorkspace.shared.open(URL(string: "https://brew.sh/ru/")!)
+            return
+        }
+        let cmd = "\(brew) install \(package)"
+        let script = """
+            tell application "Terminal"
+                activate
+                do script \(Tools.quote(cmd))
+            end tell
+            """
+        var err: NSDictionary?
+        NSAppleScript(source: script)?.executeAndReturnError(&err)
+        if err != nil {
+            // Automation denied: fall back to copying the command.
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString("brew install \(package)", forType: .string)
+            Toast.show(L("Команда скопирована", "Command copied"),
+                       sub: L("Вставьте её в Терминал: brew install \(package)", "Paste into Terminal: brew install \(package)"))
+            NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
         }
     }
 }
