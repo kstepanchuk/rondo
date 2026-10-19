@@ -1,0 +1,159 @@
+import AppKit
+
+struct RondoError: LocalizedError {
+    let message: String
+    init(_ message: String) { self.message = message }
+    var errorDescription: String? { message }
+}
+
+enum Tools {
+    private static let searchPaths = ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin"]
+
+    static func find(_ names: String...) -> String? {
+        for name in names {
+            for dir in searchPaths {
+                let p = "\(dir)/\(name)"
+                if FileManager.default.isExecutableFile(atPath: p) { return p }
+            }
+        }
+        return nil
+    }
+
+    static var ffmpeg: String? { find("ffmpeg") }
+    static var pandoc: String? { find("pandoc") }
+    static var sevenZip: String? { find("7zz", "7z") }
+
+    static func hasApp(_ bundleID: String) -> Bool {
+        NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) != nil
+    }
+    static var word: Bool { hasApp("com.microsoft.Word") }
+    static var excel: Bool { hasApp("com.microsoft.Excel") }
+    static var powerPoint: Bool { hasApp("com.microsoft.Powerpoint") }
+    static var keynote: Bool { hasApp("com.apple.Keynote") }
+
+    /// Runs a process, throwing with its stderr on failure. Returns stdout.
+    @discardableResult
+    static func run(_ exe: String, _ args: [String], cwd: URL? = nil) throws -> String {
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: exe)
+        p.arguments = args
+        if let cwd { p.currentDirectoryURL = cwd }
+        let out = Pipe(), err = Pipe()
+        p.standardOutput = out
+        p.standardError = err
+        p.standardInput = FileHandle.nullDevice
+        try p.run()
+        // Drain stderr on another thread so neither pipe can fill up and deadlock the child.
+        var e = Data()
+        let errDone = DispatchSemaphore(value: 0)
+        DispatchQueue.global().async { e = err.fileHandleForReading.readDataToEndOfFile(); errDone.signal() }
+        let o = out.fileHandleForReading.readDataToEndOfFile()
+        errDone.wait()
+        p.waitUntilExit()
+        if p.terminationStatus != 0 {
+            let msg = String(decoding: e, as: UTF8.self)
+                .split(separator: "\n").suffix(3).joined(separator: "\n")
+            throw RondoError("\((exe as NSString).lastPathComponent): \(msg)")
+        }
+        return String(decoding: o, as: UTF8.self)
+    }
+
+    static func ffmpeg(_ args: [String]) throws {
+        guard let ff = ffmpeg else { throw RondoError(L("Нужен ffmpeg: brew install ffmpeg", "ffmpeg required: brew install ffmpeg")) }
+        try run(ff, ["-hide_banner", "-loglevel", "error", "-nostdin", "-y",
+                       "-protocol_whitelist", "file,pipe"] + args)
+    }
+
+    static func osascript(_ source: String) throws -> String {
+        try run("/usr/bin/osascript", ["-e", source]).trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    static func quote(_ s: String) -> String {
+        "\"" + s.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"") + "\""
+    }
+}
+
+/// Microsoft Office / Keynote automation. Office apps are sandboxed, so files are
+/// staged through the shared Office group container to avoid "Grant access" prompts.
+enum Office {
+    private static var stage: URL {
+        let base = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Group Containers/UBF8T346G9.Office/Rondo", isDirectory: true)
+        let u = base.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try? FileManager.default.createDirectory(at: u, withIntermediateDirectories: true)
+        return u
+    }
+
+    /// Copies `src` into a staging dir, runs `script(in, out)`, moves the result to `dest`.
+    private static func staged(_ src: URL, outName: String, dest: URL,
+                               _ script: (String, String) -> String) throws {
+        let dir = stage
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let input = dir.appendingPathComponent("in." + src.pathExtension)
+        let output = dir.appendingPathComponent(outName)
+        try FileManager.default.copyItem(at: src, to: input)
+        _ = try Tools.osascript(script(input.path, output.path))
+        guard FileManager.default.fileExists(atPath: output.path) else {
+            throw RondoError(L("Office не создал файл", "Office did not produce a file"))
+        }
+        try FileManager.default.moveItem(at: output, to: dest)
+    }
+
+    static func word(_ src: URL, to dest: URL, format: String) throws {
+        // format: "format PDF", "format document" (docx), "format rtf", "format plain text"
+        try staged(src, outName: "out." + dest.pathExtension, dest: dest) { i, o in
+            """
+            tell application "Microsoft Word"
+                set d to open file name \(Tools.quote(i))
+                set d to active document
+                save as d file name \(Tools.quote(o)) file format \(format)
+                close d saving no
+            end tell
+            """
+        }
+    }
+
+    static func excel(_ src: URL, to dest: URL, format: String) throws {
+        // format: "PDF file format", "CSV file format", "Excel XML file format"
+        try staged(src, outName: "out." + dest.pathExtension, dest: dest) { i, o in
+            """
+            tell application "Microsoft Excel"
+                open \(Tools.quote(i))
+                set wb to active workbook
+                save workbook as wb filename \(Tools.quote(o)) file format \(format) with overwrite
+                close wb saving no
+            end tell
+            """
+        }
+    }
+
+    static func presentationToPDF(_ src: URL, to dest: URL) throws {
+        if Tools.powerPoint {
+            try staged(src, outName: "out.pdf", dest: dest) { i, o in
+                """
+                set outPath to (POSIX file \(Tools.quote(o))) as text
+                tell application "Microsoft PowerPoint"
+                    open \(Tools.quote(i))
+                    set p to active presentation
+                    save p in outPath as save as PDF
+                    close p saving no
+                end tell
+                """
+            }
+        } else if Tools.keynote {
+            let dir = Paths.temp()
+            defer { try? FileManager.default.removeItem(at: dir) }
+            let out = dir.appendingPathComponent("out.pdf")
+            _ = try Tools.osascript("""
+                tell application "Keynote"
+                    set d to open POSIX file \(Tools.quote(src.path))
+                    export d to POSIX file \(Tools.quote(out.path)) as PDF
+                    close d saving no
+                end tell
+                """)
+            try FileManager.default.moveItem(at: out, to: dest)
+        } else {
+            throw RondoError(L("Нужен PowerPoint или Keynote", "PowerPoint or Keynote required"))
+        }
+    }
+}

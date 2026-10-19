@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleName</key><string>Rondo</string>
+	<key>CFBundleDisplayName</key><string>Rondo</string>
+	<key>CFBundleIdentifier</key><string>io.github.kstepanchuk.rondo</string>
+	<key>CFBundleExecutable</key><string>Rondo</string>
+	<key>CFBundlePackageType</key><string>APPL</string>
+	<key>CFBundleIconFile</key><string>AppIcon</string>
+	<key>CFBundleShortVersionString</key><string>__VERSION__</string>
+	<key>CFBundleVersion</key><string>__VERSION__</string>
+	<key>LSMinimumSystemVersion</key><string>13.0</string>
+	<key>LSUIElement</key><true/>
+	<key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
+	<key>NSHumanReadableCopyright</key><string>MIT License</string>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>Rondo управляет Finder, Word, Excel, PowerPoint и Keynote, чтобы брать выделенные файлы и конвертировать документы. / Rondo controls Finder and Office apps to read the selection and convert documents.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Rondo расшифровывает аудио и видео в текст на этом Mac. / Rondo transcribes audio and video on this Mac.</string>
+	<key>NSServices</key>
+	<array>
+		<dict>
+			<key>NSMenuItem</key><dict><key>default</key><string>Rondo…</string></dict>
+			<key>NSMessage</key><string>openMenu</string>
+			<key>NSPortName</key><string>Rondo</string>
+			<key>NSRequiredContext</key><dict/>
+			<key>NSSendFileTypes</key><array><string>public.item</string></array>
+		</dict>
+	</array>
+</dict>
+</plist>
