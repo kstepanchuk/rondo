@@ -16,6 +16,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if let i = args.firstIndex(of: "--self-test"), i + 1 < args.count {
             return SelfTest.run(dir: URL(fileURLWithPath: args[i + 1]), office: args.contains("--office"))
         }
+        if let i = args.firstIndex(of: "--render-menu"), i + 1 < args.count {
+            // Writes menu-dark.png and menu-light.png (image kind, Convert mode) for the README.
+            _ = NSApplication.shared
+            let dir = URL(fileURLWithPath: args[i + 1])
+            for (name, theme) in [("dark", ThemeChoice.dark), ("light", ThemeChoice.light)] {
+                Prefs.shared.theme = theme
+                let v = RadialView(frame: NSRect(x: 0, y: 0, width: 380, height: 380))
+                v.palette = .current
+                v.mode = .convert
+                v.operations = Catalog.operations(kinds: [.image], mode: .convert)
+                try? v.renderPNG(hover: 1)?.write(to: dir.appendingPathComponent("menu-\(name).png"))
+            }
+            Prefs.shared.theme = .system
+            return
+        }
         let app = NSApplication.shared
         let delegate = AppDelegate()
         app.delegate = delegate

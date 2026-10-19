@@ -178,6 +178,16 @@ final class RadialView: NSView {
     private var lift: [CGFloat] = []
     private var animTimer: Timer?
 
+    /// Static, fully-open rendering for README screenshots (`--render-menu`).
+    func renderPNG(hover: Int?) -> Data? {
+        appear = 1
+        hovered = hover
+        lift = operations.indices.map { $0 == hover ? 1 : 0 }
+        guard let rep = bitmapImageRepForCachingDisplay(in: bounds) else { return nil }
+        cacheDisplay(in: bounds, to: rep)
+        return rep.representation(using: .png, properties: [:])
+    }
+
     func animateIn(fast: Bool = false) {
         appear = 0
         appearStart = Date()
