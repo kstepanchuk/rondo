@@ -22,6 +22,16 @@ enum Tools {
     static var ffmpeg: String? { find("ffmpeg") }
     static var pandoc: String? { find("pandoc") }
     static var sevenZip: String? { find("7zz", "7z") }
+    /// LibreOffice's open-source headless converter (Homebrew cask: libreoffice).
+    static var libreOffice: String? {
+        if let executable = find("soffice") { return executable }
+        let candidates = [
+            "/Applications/LibreOffice.app/Contents/MacOS/soffice",
+            FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent("Applications/LibreOffice.app/Contents/MacOS/soffice").path,
+        ]
+        return candidates.first { FileManager.default.isExecutableFile(atPath: $0) }
+    }
 
     static func hasApp(_ bundleID: String) -> Bool {
         NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) != nil
@@ -100,6 +110,8 @@ enum Office {
     }
 
     static func word(_ src: URL, to dest: URL, format: String) throws {
+        // Use the native app when present; otherwise LibreOffice can export headlessly.
+        guard Tools.word else { return try libreOfficeConvert(src, to: dest, format: dest.pathExtension) }
         // format: "format PDF", "format document" (docx), "format rtf", "format plain text"
         try staged(src, outName: "out." + dest.pathExtension, dest: dest) { i, o in
             """
@@ -115,6 +127,7 @@ enum Office {
 
     static func excel(_ src: URL, to dest: URL, format: String) throws {
         // format: "PDF file format", "CSV file format", "Excel XML file format"
+        guard Tools.excel else { return try libreOfficeConvert(src, to: dest, format: dest.pathExtension) }
         try staged(src, outName: "out." + dest.pathExtension, dest: dest) { i, o in
             """
             tell application "Microsoft Excel"
@@ -153,7 +166,37 @@ enum Office {
                 """)
             try FileManager.default.moveItem(at: out, to: dest)
         } else {
-            throw RondoError(L("Нужен PowerPoint или Keynote", "PowerPoint or Keynote required"))
+            try libreOfficeConvert(src, to: dest, format: "pdf")
         }
+    }
+
+    /// Converts a document in an isolated LibreOffice profile and temporary output folder.
+    /// This avoids GUI startup, profile-lock conflicts, and overwriting an existing result.
+    private static func libreOfficeConvert(_ src: URL, to dest: URL, format: String) throws {
+        guard let executable = Tools.libreOffice else {
+            throw RondoError(L("Установите LibreOffice: brew install --cask libreoffice",
+                               "Install LibreOffice: brew install --cask libreoffice"))
+        }
+        let work = Paths.temp()
+        defer { try? FileManager.default.removeItem(at: work) }
+        let input = work.appendingPathComponent(src.lastPathComponent)
+        let outputDir = work.appendingPathComponent("output", isDirectory: true)
+        let profileDir = work.appendingPathComponent("profile", isDirectory: true)
+        try FileManager.default.createDirectory(at: outputDir, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: profileDir, withIntermediateDirectories: true)
+        try FileManager.default.copyItem(at: src, to: input)
+
+        let profileURL = profileDir.absoluteURL
+        _ = try Tools.run(executable, [
+            "--headless", "--nologo", "--nodefault", "--nolockcheck", "--norestore",
+            "-env:UserInstallation=\(profileURL.absoluteString)",
+            "--convert-to", format, "--outdir", outputDir.path, input.path,
+        ])
+        let output = outputDir.appendingPathComponent(input.deletingPathExtension().lastPathComponent)
+            .appendingPathExtension(format)
+        guard FileManager.default.fileExists(atPath: output.path) else {
+            throw RondoError(L("LibreOffice не создал файл", "LibreOffice did not produce a file"))
+        }
+        try FileManager.default.moveItem(at: output, to: dest)
     }
 }
