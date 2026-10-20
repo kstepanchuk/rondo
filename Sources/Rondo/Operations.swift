@@ -309,7 +309,7 @@ enum Catalog {
                         try PDF.compress($0, to: $1)
                     }]
         case .presentation:
-            guard Tools.powerPoint || Tools.keynote else { return [] }
+            guard Tools.powerPoint || Tools.keynote || Tools.libreOffice != nil else { return [] }
             return [explodeSlides]
         default:
             return []
