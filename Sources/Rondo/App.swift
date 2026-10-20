@@ -16,7 +16,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if let i = args.firstIndex(of: "--self-test"), i + 1 < args.count {
             return SelfTest.run(dir: URL(fileURLWithPath: args[i + 1]), office: args.contains("--office"))
         }
-        if let i = args.firstIndex(of: "--verify-update"), i + 1 < args.count {
+        if let i = args.firstIndex(of: "--arena-deck"), i + 1 < args.count {
+            // Creates an Arena deck from a folder and prints its id (for testing).
+            do { print("ok   deck id \(try Arena.addDeck(from: URL(fileURLWithPath: args[i + 1])))"); exit(0) }
+            catch { print("FAIL arena: \(error.localizedDescription)"); exit(1) }
+        }
+                if let i = args.firstIndex(of: "--verify-update"), i + 1 < args.count {
             // Runs the updater's checks on a local DMG (needs <dmg>.sha256 next to it).
             let dmg = URL(fileURLWithPath: args[i + 1])
             do {

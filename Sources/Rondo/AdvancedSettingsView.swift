@@ -4,6 +4,7 @@ import SwiftUI
 struct AdvancedSection: View {
     @ObservedObject private var a = AdvancedPrefs.shared
     @State private var editingLayout = false
+    @State private var arenaPort = Arena.port
 
     var body: some View {
         Section {
@@ -29,6 +30,13 @@ struct AdvancedSection: View {
                     Text(L("Клавиши повторяются: сработает первый режим из списка.",
                            "Keys overlap: the first matching mode wins."))
                         .font(.caption).foregroundStyle(.orange)
+                }
+                HStack {
+                    Text(L("Порт Resolume Arena", "Resolume Arena port"))
+                    Spacer()
+                    TextField("8080", value: $arenaPort, format: .number.grouping(.never))
+                        .frame(width: 70).multilineTextAlignment(.trailing)
+                        .onChange(of: arenaPort) { Arena.port = $0 }
                 }
                 HStack {
                     Button(L("Настроить колесо…", "Customize wheel…")) { editingLayout = true }
@@ -67,7 +75,7 @@ struct LayoutEditor: View {
         (.image, L("Изображения", "Images")), (.raw, "RAW"), (.video, L("Видео", "Video")),
         (.audio, L("Аудио", "Audio")), (.pdf, "PDF"), (.document, L("Документы", "Documents")),
         (.spreadsheet, L("Таблицы", "Spreadsheets")), (.presentation, L("Презентации", "Slides")),
-        (.archive, L("Архивы", "Archives")),
+        (.archive, L("Архивы", "Archives")), (.folder, L("Папки", "Folders")),
     ]
 
     var body: some View {

@@ -114,6 +114,8 @@ brew install ffmpeg pandoc sevenzip
 
 ZIP, 7Z ⁴, распаковать (ZIP, 7Z, RAR, TAR…), AirDrop, SHA-256 в буфер, копировать путь, показать в Finder, дубликат, ZIP нескольких файлов.
 
+**🎛 Resolume Arena**: перетащите папку со слайдами с ⌥ на «В Arena как деку». В Arena появится новая дека с именем папки, картинки и видео встанут в клипы первого слоя по порядку (1, 2 … 10). Нужен включённый веб-сервер Arena (Preferences → Webserver, порт 8080 меняется в расширенных настройках).
+
 **Свои действия**: создайте в «Быстрых командах» папку **Rondo**, и её команды появятся в этом колесе.
 
 </details>
@@ -167,6 +169,7 @@ Or grab the DMG from [Releases](https://github.com/kstepanchuk/rondo/releases/la
 - Audio and video need `ffmpeg`, Markdown and EPUB need `pandoc`. Office documents use Word, Excel and PowerPoint (or Keynote).
 - Results are saved next to the original by default. Originals are never overwritten.
 - Everything runs on your Mac, including speech-to-text. The only network call is the update check, and every update is verified by SHA-256 and code signature.
+- Drop a folder of slides on “Arena deck” to create a Resolume Arena deck named after the folder (via Arena's REST API).
 - Your own Shortcuts from the **Rondo** folder show up as actions.
 
 MIT License.

@@ -20,9 +20,14 @@ enum Mode: Int, CaseIterable {
 }
 
 enum Kind: Hashable {
-    case image, raw, video, audio, pdf, document, markdown, spreadsheet, csv, presentation, subtitle, archive, other
+    case folder, image, raw, video, audio, pdf, document, markdown, spreadsheet, csv, presentation, subtitle, archive, other
 
     static func of(_ url: URL) -> Kind {
+        var isDir: ObjCBool = false
+        if FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir), isDir.boolValue,
+           !NSWorkspace.shared.isFilePackage(atPath: url.path) {
+            return .folder
+        }
         let ext = url.pathExtension.lowercased()
         switch ext {
         case "pdf": return .pdf
@@ -201,7 +206,7 @@ enum Catalog {
                     else { try Subtitles.vttToSrt(s, to: d) }
                 },
             ]
-        case .archive, .other:
+        case .archive, .other, .folder:
             return []
         }
     }
@@ -314,6 +319,7 @@ enum Catalog {
     private static func actions(_ k: Kind) -> [Operation] {
         var ops: [Operation] = []
         if k == .archive { ops.append(unpack) }
+        if k == .folder { ops.append(arenaDeck) }
         ops += [
             single("zip", "ZIP", "doc.zipper", ext: "zip") { s, d in
                 try Tools.run("/usr/bin/ditto", ["-c", "-k", "--sequesterRsrc", "--keepParent", s.path, d.path])
@@ -340,6 +346,7 @@ enum Catalog {
                 Extras.airDrop(urls)
                 return []
             },
+
             Operation(id: "sha", title: "SHA-256", symbol: "number") { urls in
                 let lines = try urls.map { "\(try Extras.sha256($0))  \($0.lastPathComponent)" }
                 DispatchQueue.main.async {
@@ -358,6 +365,7 @@ enum Catalog {
                 }
             },
         ]
+        if k == .folder { ops.removeAll { $0.id == "sha" } }
         return ops + UserShortcuts.operations
     }
 
@@ -479,6 +487,18 @@ enum Catalog {
             try PDF.explode(PDF.open(pdf), into: dir) { PDF.slideSize($0) }
             return dir
         }
+    }
+
+    private static let arenaDeck = Operation(id: "arena-deck", title: L("В Arena как деку", "Arena deck"),
+                                             symbol: "square.stack.3d.down.right") { urls in
+        let names = try urls.map { folder -> String in
+            try Arena.addDeck(from: folder)
+            return "«\(folder.lastPathComponent)» (\(Arena.slides(in: folder).count))"
+        }
+        DispatchQueue.main.async {
+            Toast.show(L("Добавлено в Arena", "Added to Arena"), sub: names.joined(separator: ", "))
+        }
+        return []
     }
 
     private static let unpack = Operation(id: "unpack", title: L("Распаковать", "Extract"), symbol: "shippingbox") { urls in
