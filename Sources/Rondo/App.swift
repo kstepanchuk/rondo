@@ -250,6 +250,7 @@ struct SettingsView: View {
                 tool("7-Zip", Tools.sevenZip != nil, L("архивы 7z", "7z archives"), "sevenzip")
                 tool("Microsoft Word", Tools.word, "DOCX → PDF", nil)
                 tool("Microsoft Excel", Tools.excel, "XLSX ⇄ CSV, PDF", nil)
+                tool("LibreOffice", Tools.libreOffice != nil, L("офисные документы → PDF", "Office documents → PDF"), "--cask libreoffice")
                 tool("PowerPoint / Keynote", Tools.powerPoint || Tools.keynote, L("слайды → PDF, PNG", "slides → PDF, PNG"), nil)
             } header: {
                 Text(L("Инструменты", "Tools"))
