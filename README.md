@@ -5,8 +5,8 @@
 <h1 align="center">Rondo</h1>
 
 <p align="center">
-  <b>Конвертер файлов для macOS с круговым меню.</b><br>
-  Тяните файл, зажмите <kbd>⇧</kbd> <kbd>⌃</kbd> или <kbd>⌥</kbd> и отпустите над нужным форматом.
+  <b>A radial-menu file converter for macOS.</b><br>
+  Drag a file, hold <kbd>⇧</kbd> <kbd>⌃</kbd> or <kbd>⌥</kbd>, and drop it on a format.
 </p>
 
 <p align="center">
@@ -18,27 +18,31 @@
 </p>
 
 <p align="center">
-  <a href="#установка"><b>Установка</b></a> ·
-  <a href="#возможности"><b>Возможности</b></a> ·
-  <a href="#приватность-и-безопасность"><b>Приватность</b></a> ·
-  <a href="#english"><b>English</b></a>
+  <b>English</b> · <a href="README.ru.md">Русский</a>
 </p>
 
 <p align="center">
-  <img src="docs/menu-dark.png" width="46%" alt="Тёмная тема: красно-чёрная">
+  <a href="#install"><b>Install</b></a> ·
+  <a href="#how-it-works"><b>How it works</b></a> ·
+  <a href="#features"><b>Features</b></a> ·
+  <a href="#privacy--security"><b>Privacy</b></a>
+</p>
+
+<p align="center">
+  <img src="docs/menu-dark-en.png" width="46%" alt="Dark theme: red and black">
   &nbsp;
-  <img src="docs/menu-light.png" width="46%" alt="Светлая тема: бело-голубая">
+  <img src="docs/menu-light-en.png" width="46%" alt="Light theme: white and blue">
 </p>
 
 <table>
   <tr>
-    <td width="33%" valign="top"><b>🎯 У курсора</b><br>Без окон и диалогов. Меню показывает только то, что подходит перетаскиваемым файлам.</td>
-    <td width="33%" valign="top"><b>🔒 Только локально</b><br>Ничего не загружается в интернет. Даже распознавание речи и текста работает офлайн.</td>
-    <td width="33%" valign="top"><b>⚡️ Без лишнего</b><br>Изображения, PDF, OCR и архивы работают сразу. ffmpeg, pandoc и Office нужны только для своих форматов.</td>
+    <td width="33%" valign="top"><b>🎯 Right at your cursor</b><br>No windows, no dialogs. The wheel only shows what makes sense for the files you're dragging.</td>
+    <td width="33%" valign="top"><b>🔒 Stays on your Mac</b><br>Nothing is uploaded. Even OCR and speech-to-text run offline.</td>
+    <td width="33%" valign="top"><b>🆓 Free and open source</b><br>MIT license, no accounts, no limits, no telemetry.</td>
   </tr>
 </table>
 
-## Установка
+## Install
 
 **Homebrew**
 
@@ -46,130 +50,112 @@
 brew install --cask kstepanchuk/rondo/rondo
 ```
 
-**DMG**: скачайте `Rondo-x.y.z.dmg` из [Releases](https://github.com/kstepanchuk/rondo/releases/latest) и перетащите Rondo в «Программы».
+**DMG**: download `Rondo-x.y.z.dmg` from [Releases](https://github.com/kstepanchuk/rondo/releases/latest) and drag Rondo to Applications.
 
 > [!NOTE]
-> Приложение не нотаризовано. При установке из DMG откройте его первый раз так: *Системные настройки → Конфиденциальность и безопасность → Всё равно открыть*. При установке через brew это не нужно.
+> Rondo isn't notarized yet. If you install from the DMG, allow the first launch in *System Settings → Privacy & Security → Open Anyway*. Homebrew installs don't need this.
 
-**Дополнительные движки** (по желанию):
+**Optional engines:**
 
 ```bash
 brew install ffmpeg pandoc sevenzip
 ```
 
-Конвертация DOCX, XLSX и PPTX в PDF использует Microsoft Word, Excel и PowerPoint (или Keynote), если они установлены.
+DOCX, XLSX and PPTX to PDF use Microsoft Word, Excel and PowerPoint (or Keynote) when they're installed.
 
-**Обновления.** Rondo раз в день проверяет GitHub Releases, перед установкой сверяет SHA-256 и подпись и сам перезапускается. Проверить вручную можно через меню «Проверить обновления…».
+**Updates.** Rondo checks GitHub Releases once a day, verifies the update's SHA-256 and code signature, and relaunches itself. You can also use *Check for Updates…* in the menu.
 
-## Как пользоваться
+## How it works
 
-| | Клавиша | Режим |
+| | Key | Wheel |
 |---|---|---|
-| 🔄 | <kbd>⇧ Shift</kbd> | Конвертация |
-| 🛠 | <kbd>⌃ Control</kbd> | Инструменты |
-| ⚡️ | <kbd>⌥ Option</kbd> | Действия |
+| 🔄 | <kbd>⇧ Shift</kbd> | Convert |
+| 🛠 | <kbd>⌃ Control</kbd> | Tools |
+| ⚡️ | <kbd>⌥ Option</kbd> | Actions |
 
-1. Начните тянуть файл (или несколько) из Finder, браузера, Почты или Фото.
-2. Зажмите модификатор: у курсора раскроется колесо. Модификатор можно менять на ходу.
-3. Отпустите файл над сектором. Центр колеса отменяет действие.
+1. Start dragging a file (or several) from Finder, a browser, Mail or Photos.
+2. Hold a modifier key and the wheel opens at your cursor. You can switch keys mid-drag.
+3. Drop the file on a sector. The centre of the wheel cancels.
 
-**Без мыши**: выделите файлы в Finder и нажмите <kbd>⌃⌥Space</kbd>. <kbd>Tab</kbd> меняет режим, стрелки и <kbd>Enter</kbd> выбирают, <kbd>Esc</kbd> закрывает меню.
-**Через контекстное меню**: правый клик → Службы → **Rondo…**
+**Keyboard**: select files in Finder and press <kbd>⌃⌥Space</kbd>. <kbd>Tab</kbd> switches wheels, arrows and <kbd>Enter</kbd> choose, <kbd>Esc</kbd> closes.
+**Context menu**: right-click → Services → **Rondo…**
 
-## Возможности
+## Features
 
 <details open>
-<summary><b>🔄 Конвертация</b></summary>
+<summary><b>🔄 Convert</b></summary>
 
-| Что | Во что |
+| From | To |
 |---|---|
-| Изображения | JPG, PNG, HEIC, AVIF, TIFF, GIF, PDF, иконки **ICNS + ICO** |
-| 📷 RAW с камер | JPG, HEIC, **TIFF 16 бит**, PNG, AVIF с сохранением EXIF. Canon CR2/CR3, Nikon NEF, Sony ARW, Fuji RAF, DNG, Olympus, Panasonic и др. |
-| Видео ¹ | MP4, MOV, WebM, GIF, MP3 |
-| Аудио ¹ | MP3, WAV, M4A, FLAC, OGG |
-| Документы | DOCX, RTF, TXT, HTML, ODT · PDF ³ · Markdown, EPUB ² |
+| Images | JPG, PNG, HEIC, AVIF, TIFF, GIF, PDF, app icons **ICNS + ICO** |
+| 📷 Camera RAW | JPG, HEIC, **16-bit TIFF**, PNG, AVIF, keeping EXIF. Canon CR2/CR3, Nikon NEF, Sony ARW, Fuji RAF, DNG, Olympus, Panasonic and more |
+| Video ¹ | MP4, MOV, WebM, GIF, MP3 |
+| Audio ¹ | MP3, WAV, M4A, FLAC, OGG |
+| Documents | DOCX, RTF, TXT, HTML, ODT · PDF ³ · Markdown, EPUB ² |
 | Markdown ² | DOCX, HTML, EPUB, PDF ³ |
-| Таблицы ³ | PDF, CSV, XLSX · CSV → XLSX |
-| Презентации ³ | PDF |
+| Spreadsheets ³ | PDF, CSV, XLSX · CSV → XLSX |
+| Presentations ³ | PDF |
 | PDF | TXT, PNG |
-| Субтитры | SRT ⇄ VTT |
+| Subtitles | SRT ⇄ VTT |
 
 </details>
 
 <details open>
-<summary><b>🛠 Инструменты</b></summary>
+<summary><b>🛠 Tools</b></summary>
 
-- **Изображения**: убрать фон, уменьшить, повернуть, отразить, удалить EXIF и GPS, распознать текст (OCR), прочитать QR-код, подготовить «для веба» (≤ 2048 px, JPEG 80 %), извлечь палитру цветов.
-- **RAW**: быстрое превью (встроенный JPEG камеры), данные съёмки в буфер (камера, объектив, выдержка, диафрагма, ISO), «для веба», палитра.
-- **PDF**: разложить в PNG, OCR, QR, разбить по страницам, сжать.
-- **Презентации** ³: разложить в PNG. Слайды 16:9 получаются ровно **1920×1080**.
-- **Видео** ¹: **обрезать по времени и кадрировать** (16:9, 9:16, 1:1, 4:5) в редакторе, как в QuickTime, сжать, убрать звук, первый кадр, извлечь субтитры, вертикаль **9:16** для Reels и Shorts, расшифровать речь.
-- **Аудио** ¹: **обрезать по времени**, моно, выровнять громкость, убрать тишину, расшифровать речь.
-- **Несколько файлов**: объединить в PDF, коллаж.
+- **Images**: remove background, shrink, rotate, flip, strip EXIF and GPS, text recognition (OCR), read QR codes, web-ready (≤ 2048 px, JPEG 80 %), extract a colour palette.
+- **RAW**: instant preview (the camera's embedded JPEG), shot info to the clipboard (camera, lens, shutter, aperture, ISO), web-ready, palette.
+- **PDF**: explode to PNG, OCR, QR, split into pages, compress.
+- **Presentations** ³: explode to PNG. 16:9 slides come out at exactly **1920×1080**.
+- **Video** ¹: **trim and crop** (16:9, 9:16, 1:1, 4:5) in a QuickTime-style editor, compress, mute, first frame, extract subtitles, vertical **9:16** for Reels and Shorts, transcribe speech.
+- **Audio** ¹: **trim**, mono, normalize loudness, remove silence, transcribe speech.
+- **Several files**: merge into one PDF, collage.
 
 </details>
 
 <details open>
-<summary><b>⚡️ Действия</b></summary>
+<summary><b>⚡️ Actions</b></summary>
 
-ZIP, 7Z ⁴, распаковать (ZIP, 7Z, RAR, TAR…), AirDrop, SHA-256 в буфер, копировать путь, показать в Finder, дубликат, ZIP нескольких файлов.
+ZIP, 7Z ⁴, extract (ZIP, 7Z, RAR, TAR…), AirDrop, SHA-256 to the clipboard, copy path, reveal in Finder, duplicate, ZIP several files.
 
-**🎛 Resolume Arena**: перетащите папку со слайдами с ⌥ на «В Arena как деку». В Arena появится новая дека с именем папки, картинки и видео встанут в клипы первого слоя по порядку (1, 2 … 10). Нужен включённый веб-сервер Arena (Preferences → Webserver, порт 8080 меняется в расширенных настройках).
+**🎛 Resolume Arena**: drop a folder of slides with ⌥ on *Arena deck*. Arena gets a new deck named after the folder, with the images and videos loaded into layer 1 in order (1, 2 … 10). Needs Arena's webserver on (Preferences → Webserver; the port is configurable in advanced settings).
 
-**Свои действия**: создайте в «Быстрых командах» папку **Rondo**, и её команды появятся в этом колесе.
+**Your own actions**: create a **Rondo** folder in the Shortcuts app and its shortcuts show up on this wheel.
 
 </details>
 
-<sub>¹ ffmpeg · ² pandoc · ³ Microsoft Office или Keynote · ⁴ sevenzip</sub>
+<sub>¹ ffmpeg · ² pandoc · ³ Microsoft Office or Keynote · ⁴ sevenzip</sub>
 
-## Настройки
+## Settings
 
-- Тема: как в системе, тёмная (красно-чёрная) или светлая (бело-голубая).
-- Язык: как в системе, русский или английский.
-- Куда сохранять: **рядом с исходным файлом** (по умолчанию) или в `~/Downloads/Rondo`.
-- Запуск при входе в систему, показ результата в Finder, автообновления.
-- **Расширенные** (по желанию): качество JPG/HEIC и видео, размер «для веба», переназначение клавиш режимов (⇧ ⌃ ⌥ ⌘), порядок и скрытие секторов колеса для каждого типа файлов.
-- Статус движков и команды для их установки в один клик.
+- Theme: system, dark (red and black) or light (white and blue).
+- Language: system, English or Russian.
+- Where results go: **next to the original** (default) or `~/Downloads/Rondo`.
+- Open at login, reveal results in Finder, automatic updates.
+- **Advanced** (optional): JPG/HEIC and video quality, web-ready size, remap the wheel keys (⇧ ⌃ ⌥ ⌘), reorder and hide sectors per file type.
+- Engine status, with one-click install for anything missing.
 
-## Приватность и безопасность
+## Privacy & security
 
-- Файлы не покидают Mac, телеметрии нет. В сеть приложение выходит только для проверки обновлений на GitHub.
-- Исходные файлы не перезаписываются: при совпадении имён добавляется ` (2)`, ` (3)`…
-- ffmpeg работает только с протоколом `file`, pandoc запускается с `--sandbox`. Архивы не распаковываются за пределы папки.
-- Не нужен «Универсальный доступ»: модификаторы считываются без перехвата клавиатуры.
-- Hardened runtime. Из прав запрашивается только управление Finder и Office.
+- Files never leave your Mac and there's no telemetry. The only network call is the update check on GitHub.
+- Originals are never overwritten: name clashes get ` (2)`, ` (3)`…
+- ffmpeg is limited to the `file` protocol and pandoc runs with `--sandbox`. Archives can't extract outside their folder.
+- No Accessibility permission needed: modifier keys are read without a keyboard hook.
+- Hardened runtime. The only entitlement is automation of Finder and Office.
 
-## Сборка
+## Build
 
 ```bash
-./scripts/build.sh 0.1.4     # dist/Rondo.app, Rondo-0.1.4.dmg и .sha256
+./scripts/build.sh 0.1.5     # dist/Rondo.app, Rondo-0.1.5.dmg and .sha256
 dist/Rondo.app/Contents/MacOS/Rondo --self-test ./samples [--office]
 ```
 
-Релиз: `git tag vX.Y.Z && git push --tags`, после чего GitHub Actions соберёт и опубликует DMG.
+To release: `git tag vX.Y.Z && git push --tags`. GitHub Actions builds and publishes the DMG.
 
-## Благодарности
+Contributions are welcome, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
-Идея вдохновлена [Sweetch](https://github.com/krllmrzv/Sweetch) (@mmmorozov), [Filee](https://github.com/KnifeLemon/Filee) и [Tangerine](https://tangerineformac.com). Код написан с нуля.
+## Credits
 
----
-
-## English
-
-<p align="center"><b>A radial-menu file converter for macOS.</b> Drag a file, hold <kbd>⇧</kbd> to convert, <kbd>⌃</kbd> for tools or <kbd>⌥</kbd> for actions, and drop it on a sector.</p>
-
-```bash
-brew install --cask kstepanchuk/rondo/rondo
-```
-
-Or grab the DMG from [Releases](https://github.com/kstepanchuk/rondo/releases/latest).
-
-- Camera RAW (CR2/CR3, NEF, ARW, RAF, DNG…) to JPG/HEIC/16-bit TIFF with EXIF; trim & crop editor for audio and video.
-- Images, PDF, OCR, QR, background removal, palettes, app icons, archives and checksums work with nothing else installed.
-- Audio and video need `ffmpeg`, Markdown and EPUB need `pandoc`. Office documents use Word, Excel and PowerPoint (or Keynote).
-- Results are saved next to the original by default. Originals are never overwritten.
-- Everything runs on your Mac, including speech-to-text. The only network call is the update check, and every update is verified by SHA-256 and code signature.
-- Drop a folder of slides on “Arena deck” to create a Resolume Arena deck named after the folder (via Arena's REST API).
-- Your own Shortcuts from the **Rondo** folder show up as actions.
+Inspired by [Sweetch](https://github.com/krllmrzv/Sweetch) (@mmmorozov), [Filee](https://github.com/KnifeLemon/Filee) and [Tangerine](https://tangerineformac.com). The code is written from scratch.
 
 MIT License.

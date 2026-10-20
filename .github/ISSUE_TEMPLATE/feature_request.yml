@@ -1,0 +1,16 @@
+name: Feature request
+description: Suggest a new conversion, tool or improvement
+labels: [enhancement]
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: What are you trying to do?
+      description: The task you have in mind, e.g. "I often need to send RAW photos to clients as small JPGs".
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: How could Rondo help?
+      description: Which wheel (convert / tools / actions), which file types, what the result should be.

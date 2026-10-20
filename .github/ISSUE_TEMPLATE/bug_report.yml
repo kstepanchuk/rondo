@@ -1,0 +1,30 @@
+name: Bug report
+description: Something doesn't work as expected
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, what happened instead? Include the error text if there was one.
+    validations:
+      required: true
+  - type: input
+    id: filetype
+    attributes:
+      label: File type
+      placeholder: e.g. .CR3 from Canon R6, .pptx, .mp4
+  - type: input
+    id: rondo
+    attributes:
+      label: Rondo version
+      placeholder: e.g. 0.1.5 (menu → Settings)
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version and Mac
+      placeholder: e.g. macOS 15.3, MacBook Air M2
+    validations:
+      required: true
