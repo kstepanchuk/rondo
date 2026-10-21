@@ -17,6 +17,23 @@ ICONSET="$(mktemp -d)/AppIcon.iconset"
 swift scripts/make-icon.swift "$ICONSET"
 iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/AppIcon.icns"
 
+# Shortcuts/Spotlight actions: SwiftPM doesn't run Xcode's App Intents step, so do it here.
+# 1) a compile pass that only gathers constant values, 2) the metadata processor.
+AI="$(mktemp -d)"
+printf '%s' '["AppIntent","EntityQuery","AppEntity","TransientEntity","AppEnum","AppShortcutsProvider","AppShortcutProviding","AnyResolverProviding","AppIntentsPackage","DynamicOptionsProvider","_IntentValueRepresentable"]' > "$AI/protocols.json"
+swiftc -sdk "$(xcrun --show-sdk-path)" -target arm64-apple-macos13.0 -swift-version 5 -parse-as-library \
+  -module-name Rondo -wmo -c Sources/Rondo/*.swift -o "$AI/Rondo.o" \
+  -emit-const-values-path "$AI/Rondo.swiftconstvalues" -Xfrontend -const-gather-protocols-file -Xfrontend "$AI/protocols.json"
+ls "$PWD"/Sources/Rondo/*.swift > "$AI/sources.txt"
+echo "$AI/Rondo.swiftconstvalues" > "$AI/constvals.txt"
+xcrun appintentsmetadataprocessor --output "$APP/Contents/Resources" \
+  --toolchain-dir "$(dirname "$(dirname "$(xcrun --find swiftc)")")" --module-name Rondo \
+  --sdk-root "$(xcrun --show-sdk-path)" --xcode-version "$(xcodebuild -version | awk '/Build version/{print $3}')" \
+  --platform-family macOS --deployment-target 13.0 --target-triple arm64-apple-macos13.0 \
+  --source-file-list "$AI/sources.txt" --swift-const-vals-list "$AI/constvals.txt" --binary-file "$AI/Rondo.o" \
+  2>&1 | grep -v "appintentsmetadataprocessor\[" || true
+test -f "$APP/Contents/Resources/Metadata.appintents/extract.actionsdata"
+
 codesign --force --options runtime --entitlements Resources/Rondo.entitlements --sign - "$APP"
 # ZIP only for the transition: versions ≤ 0.1.3 update from Rondo-<ver>.zip.
 if [ "${LEGACY_ZIP:-0}" = "1" ]; then
