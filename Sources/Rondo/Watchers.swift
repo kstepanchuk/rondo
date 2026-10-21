@@ -40,9 +40,9 @@ final class DragWatcher {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { RadialController.shared.hide() }
             return
         }
-        guard let mode = Mode.from(NSEvent.modifierFlags) else { return }
         let menu = RadialController.shared
-        if menu.isVisible { menu.setMode(mode) } else { menu.showForDrag(kinds: kinds, mode: mode) }
+        let mode = Mode.from(NSEvent.modifierFlags)
+        if menu.isVisible { menu.modifierMode(mode) } else if let mode { menu.showForDrag(kinds: kinds, mode: mode) }
     }
 }
 

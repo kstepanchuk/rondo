@@ -94,7 +94,7 @@ enum Catalog {
             all = all.enumerated().sorted { (rank[$0.element.id] ?? 1000 + $0.offset) < (rank[$1.element.id] ?? 1000 + $1.offset) }
                 .map(\.element)
         }
-        return Array(all.prefix(12))
+        return all
     }
 
     static func layoutKey(_ kind: Kind, _ mode: Mode) -> String { "\(kind).\(mode)" }

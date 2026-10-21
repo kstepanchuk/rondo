@@ -89,6 +89,7 @@ final class RadialController {
 
     func showForDrag(kinds: [Kind], mode: Mode) {
         files = nil
+        lastModifierMode = mode
         present(kinds: kinds, mode: mode, interactive: false)
     }
 
@@ -118,21 +119,56 @@ final class RadialController {
         isVisible = true
     }
 
+    // MARK: Modes and pages
+
+    static let moreID = "__more", backID = "__back"
+    /// Every operation of the current mode; the wheel shows one page of it.
+    private var allOps: [Operation] = []
+    private var page = 0
+    /// The mode of the modifier last seen held, so holding ⇧ doesn't undo a scroll switch.
+    private var lastModifierMode: Mode?
+
+    private var more: Operation { Operation(id: Self.moreID, title: L("Ещё", "More"), symbol: "chevron.right.circle") { _ in [] } }
+    private var back: Operation { Operation(id: Self.backID, title: L("Назад", "Back"), symbol: "chevron.left.circle") { _ in [] } }
+
+    /// ≤ 9 operations fit on one ring; otherwise 7 + "More", then "Back" + the rest.
+    private func pageOps(_ n: Int) -> [Operation] {
+        guard allOps.count > 9 else { return allOps }
+        return n == 0 ? Array(allOps.prefix(7)) + [more] : [back] + Array(allOps.dropFirst(7).prefix(10))
+    }
+
     func setMode(_ mode: Mode) {
         guard view.mode != mode || view.operations.isEmpty else { return }
         view.mode = mode
-        view.operations = Catalog.operations(kinds: kinds, mode: mode)
+        allOps = Catalog.operations(kinds: kinds, mode: mode)
+        showPage(0)
+    }
+
+    private func showPage(_ n: Int) {
+        page = n
+        view.operations = pageOps(n)
         view.hovered = nil
         if isVisible { view.animateIn(fast: true) } else { view.needsDisplay = true }
     }
 
-    func cycleMode() {
-        setMode(Mode(rawValue: (view.mode.rawValue + 1) % Mode.allCases.count)!)
+    func flipPage() { showPage(page == 0 ? 1 : 0) }
+
+    /// Called with the currently held modifier's mode; switches only when it changes.
+    func modifierMode(_ mode: Mode?) {
+        guard mode != lastModifierMode else { return }
+        lastModifierMode = mode
+        if let mode { setMode(mode) }
+    }
+
+    func cycleMode(backward: Bool = false) {
+        let n = Mode.allCases.count
+        setMode(Mode(rawValue: (view.mode.rawValue + (backward ? n - 1 : 1)) % n)!)
     }
 
     func hide() {
         guard isVisible else { return }
         isVisible = false
+        lastModifierMode = nil
         files = nil
         NSAnimationContext.runAnimationGroup({ ctx in
             ctx.duration = 0.1
@@ -145,6 +181,7 @@ final class RadialController {
 
     /// Called by the view when a sector is chosen.
     func choose(_ op: Operation, pasteboard: NSPasteboard?) {
+        if op.id == Self.moreID || op.id == Self.backID { return flipPage() }
         let clicked = files
         let at = NSPoint(x: panel.frame.midX, y: panel.frame.midY)
         hide()
@@ -254,11 +291,33 @@ final class RadialView: NSView {
         return min(Int(theta / step), operations.count - 1)
     }
 
+    private var dwell: DispatchWorkItem?
+
     private func setHover(_ i: Int?) {
         guard i != hovered else { return }
         hovered = i
         if i != nil { NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .now) }
         startTimer()
+        // Resting on "More" / "Back" flips the ring.
+        dwell?.cancel()
+        if let i, i < operations.count,
+           [RadialController.moreID, RadialController.backID].contains(operations[i].id) {
+            let work = DispatchWorkItem { RadialController.shared.flipPage() }
+            dwell = work
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.45, execute: work)
+        }
+    }
+
+    // Scroll (mouse wheel or trackpad) switches wheels: up = next, down = previous.
+    private var scrollAccum: CGFloat = 0
+    private var lastScrollSwitch = Date.distantPast
+
+    override func scrollWheel(with event: NSEvent) {
+        scrollAccum += event.scrollingDeltaY * (event.hasPreciseScrollingDeltas ? 1 : 8)
+        guard abs(scrollAccum) > 24, Date().timeIntervalSince(lastScrollSwitch) > 0.3 else { return }
+        RadialController.shared.cycleMode(backward: scrollAccum < 0)
+        scrollAccum = 0
+        lastScrollSwitch = Date()
     }
 
     // MARK: Drawing
@@ -368,7 +427,7 @@ final class RadialView: NSView {
     override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation { draggingUpdated(sender) }
 
     override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
-        if let m = Mode.from(NSEvent.modifierFlags) { RadialController.shared.setMode(m) }
+        RadialController.shared.modifierMode(Mode.from(NSEvent.modifierFlags))
         setHover(index(at: convert(sender.draggingLocation, from: nil)))
         return hovered == nil ? [] : .copy
     }
