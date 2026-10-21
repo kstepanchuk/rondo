@@ -7,7 +7,7 @@ import AppKit
 ///   rondo run img-half photo.png        run any operation by id
 ///   rondo formats                       what each file kind can become
 enum CLI {
-    static let commands: Set<String> = ["convert", "list", "run", "formats", "help", "--help", "-h", "--version"]
+    static let commands: Set<String> = ["convert", "list", "run", "formats", "info", "help", "--help", "-h", "--version"]
 
     static func isInvocation(_ args: [String]) -> Bool {
         args.count > 1 && commands.contains(args[1])
@@ -27,6 +27,12 @@ enum CLI {
                 case "list": try list(rest)
                 case "run": try runOp(rest)
                 case "formats": formats()
+                case "info":
+                    let (_, files) = try parse(rest)
+                    for f in files {
+                        print(f.lastPathComponent)
+                        for (k, v) in Metadata.describe(f) { print("  \(k): \(v)") }
+                    }
                 case "--version": print(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev")
                 default: print(usage)
                 }
@@ -48,6 +54,7 @@ enum CLI {
           rondo list <files…>                                  operations for these files
           rondo run <operation-id> [--out <dir>] <files…>      e.g. rondo run img-half photo.png
           rondo formats                                        conversions per file kind
+          rondo info <files…>                                  size, dimensions, camera, codecs, pages…
         Results go next to each original unless --out is given. Originals are never overwritten.
         """
 

@@ -338,55 +338,72 @@ enum Catalog {
     // MARK: Actions
 
     private static func actions(_ k: Kind) -> [Operation] {
+        let zip = single("zip", "ZIP", "doc.zipper", ext: "zip") { s, d in
+            try Tools.run("/usr/bin/ditto", ["-c", "-k", "--sequesterRsrc", "--keepParent", s.path, d.path])
+        }
+        let sevenZip: Operation? = Tools.sevenZip.map { sz in
+            single("7z", "7Z", "doc.zipper", ext: "7z") { s, d in try Tools.run(sz, ["a", "-bd", d.path, s.path]) }
+        }
+        let path = Operation(id: "path", title: L("Копировать путь", "Copy path"), symbol: "link") { urls in
+            DispatchQueue.main.sync {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(urls.map(\.path).joined(separator: "\n"), forType: .string)
+            }
+            return []
+        }
+        let reveal = Operation(id: "reveal", title: L("Показать в Finder", "Reveal in Finder"), symbol: "folder") { urls in
+            DispatchQueue.main.async { NSWorkspace.shared.activateFileViewerSelecting(urls) }
+            return []
+        }
+        let airdrop = Operation(id: "airdrop", title: "AirDrop", symbol: "airplayaudio") { urls in
+            Extras.airDrop(urls)
+            return []
+        }
+        let share = Operation(id: "share", title: L("Поделиться", "Share"), symbol: "square.and.arrow.up") { urls in
+            FileActions.share(urls)
+            return []
+        }
+        let shelf = Operation(id: "shelf", title: L("Полочка", "Shelf"), symbol: "tray") { urls in
+            DispatchQueue.main.async { ShelfPanel.show(urls) }
+            return []
+        }
+        let move = Operation(id: "move", title: L("Переместить в…", "Move to…"), symbol: "folder.badge.plus") { urls in
+            try FileActions.move(urls)
+        }
+        let terminal = Operation(id: "terminal", title: L("Терминал", "Terminal"), symbol: "terminal") { urls in
+            try FileActions.openTerminal(urls)
+            return []
+        }
+        let meta = Operation(id: "meta", title: L("Метаданные", "Metadata"), symbol: "info.circle") { urls in
+            Metadata.show(urls)
+            return []
+        }
+        let sha = Operation(id: "sha", title: "SHA-256", symbol: "number") { urls in
+            let lines = try urls.map { "\(try Extras.sha256($0))  \($0.lastPathComponent)" }
+            DispatchQueue.main.async {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(lines.joined(separator: "\n"), forType: .string)
+            }
+            return []
+        }
+        let dup = Operation(id: "dup", title: L("Дубликат", "Duplicate"), symbol: "plus.square.on.square") { urls in
+            try urls.map { s in
+                let d = Paths.unique(s.deletingLastPathComponent(),
+                                     s.deletingPathExtension().lastPathComponent + L(" копия", " copy"),
+                                     s.pathExtension)
+                try FileManager.default.copyItem(at: s, to: d)
+                return d
+            }
+        }
+
+        // Most used first: the first seven stay on the main ring, the rest go under "More".
         var ops: [Operation] = []
         if k == .archive { ops.append(unpack) }
         if k == .folder { ops.append(arenaDeck) }
-        ops += [
-            single("zip", "ZIP", "doc.zipper", ext: "zip") { s, d in
-                try Tools.run("/usr/bin/ditto", ["-c", "-k", "--sequesterRsrc", "--keepParent", s.path, d.path])
-            },
-        ]
-        if let sz = Tools.sevenZip {
-            ops.append(single("7z", "7Z", "doc.zipper", ext: "7z") { s, d in
-                try Tools.run(sz, ["a", "-bd", d.path, s.path])
-            })
-        }
-        ops += [
-            Operation(id: "path", title: L("Копировать путь", "Copy path"), symbol: "link") { urls in
-                DispatchQueue.main.sync {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(urls.map(\.path).joined(separator: "\n"), forType: .string)
-                }
-                return []
-            },
-            Operation(id: "reveal", title: L("Показать в Finder", "Reveal in Finder"), symbol: "folder") { urls in
-                DispatchQueue.main.async { NSWorkspace.shared.activateFileViewerSelecting(urls) }
-                return []
-            },
-            Operation(id: "airdrop", title: "AirDrop", symbol: "airplayaudio") { urls in
-                Extras.airDrop(urls)
-                return []
-            },
-
-            Operation(id: "sha", title: "SHA-256", symbol: "number") { urls in
-                let lines = try urls.map { "\(try Extras.sha256($0))  \($0.lastPathComponent)" }
-                DispatchQueue.main.async {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(lines.joined(separator: "\n"), forType: .string)
-                }
-                return []
-            },
-            Operation(id: "dup", title: L("Дубликат", "Duplicate"), symbol: "plus.square.on.square") { urls in
-                try urls.map { s in
-                    let d = Paths.unique(s.deletingLastPathComponent(),
-                                         s.deletingPathExtension().lastPathComponent + L(" копия", " copy"),
-                                         s.pathExtension)
-                    try FileManager.default.copyItem(at: s, to: d)
-                    return d
-                }
-            },
-        ]
-        if k == .folder { ops.removeAll { $0.id == "sha" } }
+        ops += [zip, airdrop, share, shelf, move, path, reveal, terminal, meta]
+        if k != .folder { ops.append(sha) }
+        ops.append(dup)
+        if let sevenZip { ops.append(sevenZip) }
         return ops + UserShortcuts.operations
     }
 

@@ -5,7 +5,7 @@ import AppKit
 enum SelfTest {
     static func run(dir: URL, office: Bool) {
         _ = NSApplication.shared
-        let skip: Set<String> = ["path", "reveal", "stt", "airdrop", "v-edit", "a-edit"]
+        let skip: Set<String> = ["path", "reveal", "stt", "airdrop", "v-edit", "a-edit", "share", "shelf", "move", "terminal", "meta"]
         let officeIDs: (String) -> Bool = { $0.hasPrefix("w-") || $0.hasPrefix("x-") || $0 == "ppt-pdf" || $0 == "md-pdf" }
         var failures = 0
 

@@ -72,7 +72,11 @@ enum Raw {
             parts.append(t >= 1 ? String(format: "%.1f s", t) : "1/\(Int((1 / t).rounded())) s")
         }
         if let f = exif[kCGImagePropertyExifFNumber] as? Double { parts.append(String(format: "f/%.1f", f)) }
-        if let iso = (exif[kCGImagePropertyExifISOSpeedRatings] as? [Int])?.first { parts.append("ISO \(iso)") }
+        // Older cameras fill ISOSpeedRatings; newer ones (e.g. Canon CR3) only ISOSpeed / RecommendedExposureIndex.
+        let iso = (exif[kCGImagePropertyExifISOSpeedRatings] as? [NSNumber])?.first
+            ?? exif[kCGImagePropertyExifISOSpeed] as? NSNumber
+            ?? exif[kCGImagePropertyExifRecommendedExposureIndex] as? NSNumber
+        if let iso { parts.append("ISO \(iso.intValue)") }
         if let fl = exif[kCGImagePropertyExifFocalLength] as? Double { parts.append("\(Int(fl.rounded())) mm") }
         if let date = exif[kCGImagePropertyExifDateTimeOriginal] as? String { parts.append(date) }
         guard !parts.isEmpty else { throw RondoError(L("Нет данных о съёмке", "No shooting data")) }
