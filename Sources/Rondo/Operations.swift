@@ -164,7 +164,9 @@ enum Catalog {
             ]
         case .document:
             var ops: [Operation] = []
-            if Tools.word { ops.append(word("PDF", "pdf", "format PDF", symbol: "doc.richtext")) }
+            if Tools.word || Tools.libreOffice != nil {
+                ops.append(word("PDF", "pdf", "format PDF", symbol: "doc.richtext"))
+            }
             ops += [textutil("DOCX", "docx"), textutil("RTF", "rtf"), textutil("TXT", "txt"),
                     textutil("HTML", "html"), textutil("ODT", "odt")]
             if Tools.pandoc != nil { ops += [pandoc("Markdown", "md"), pandoc("EPUB", "epub")] }
@@ -172,7 +174,7 @@ enum Catalog {
         case .markdown:
             guard Tools.pandoc != nil else { return [] }
             var ops = [pandoc("DOCX", "docx"), pandoc("HTML", "html"), pandoc("EPUB", "epub")]
-            if Tools.word {
+            if Tools.word || Tools.libreOffice != nil {
                 ops.insert(single("md-pdf", "PDF", "doc.richtext", ext: "pdf") { s, d in
                     let tmp = Paths.temp()
                     defer { try? FileManager.default.removeItem(at: tmp) }
@@ -183,15 +185,15 @@ enum Catalog {
             }
             return ops
         case .spreadsheet:
-            guard Tools.excel else { return [] }
+            guard Tools.excel || Tools.libreOffice != nil else { return [] }
             return [excel("PDF", "pdf", "PDF file format", symbol: "doc.richtext"),
                     excel("CSV", "csv", "CSV file format"),
                     excel("XLSX", "xlsx", "Excel XML file format")]
         case .csv:
-            guard Tools.excel else { return [] }
+            guard Tools.excel || Tools.libreOffice != nil else { return [] }
             return [excel("XLSX", "xlsx", "Excel XML file format"), excel("PDF", "pdf", "PDF file format", symbol: "doc.richtext")]
         case .presentation:
-            guard Tools.powerPoint || Tools.keynote else { return [] }
+            guard Tools.powerPoint || Tools.keynote || Tools.libreOffice != nil else { return [] }
             return [single("ppt-pdf", "PDF", "doc.richtext", ext: "pdf") { s, d in
                 try Office.presentationToPDF(s, to: d)
             }]
@@ -307,7 +309,7 @@ enum Catalog {
                         try PDF.compress($0, to: $1)
                     }]
         case .presentation:
-            guard Tools.powerPoint || Tools.keynote else { return [] }
+            guard Tools.powerPoint || Tools.keynote || Tools.libreOffice != nil else { return [] }
             return [explodeSlides]
         default:
             return []

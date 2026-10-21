@@ -1,0 +1,46 @@
+name: Test build
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version label for the test app and artifact
+        required: true
+        default: "0.1.5"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Build universal app and DMG
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if [[ ! "$VERSION" =~ ^[0-9]+(\.[0-9]+){1,2}$ ]]; then
+            echo "Version must contain two or three numeric components, such as 0.1.5."
+            exit 1
+          fi
+          ./scripts/build.sh "$VERSION"
+
+      - name: Smoke test
+        run: |
+          mkdir -p /tmp/rondo-smoke-test
+          printf 'Rondo test build\n' > /tmp/rondo-smoke-test/test.txt
+          dist/Rondo.app/Contents/MacOS/Rondo --self-test /tmp/rondo-smoke-test
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: Rondo-${{ inputs.version }}
+          path: |
+            dist/Rondo-${{ inputs.version }}.dmg
+            dist/Rondo-${{ inputs.version }}.dmg.sha256
+          if-no-files-found: error
+          retention-days: 7
