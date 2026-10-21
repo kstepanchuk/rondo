@@ -252,6 +252,14 @@ struct SettingsView: View {
                 tool("Microsoft Excel", Tools.excel, "XLSX ⇄ CSV, PDF", nil)
                 tool("LibreOffice", Tools.libreOffice != nil, L("офисные документы → PDF", "Office documents → PDF"), "--cask libreoffice")
                 tool("PowerPoint / Keynote", Tools.powerPoint || Tools.keynote, L("слайды → PDF, PNG", "slides → PDF, PNG"), nil)
+                Picker(L("Движок для документов", "Document engine"), selection: $prefs.docEngine) {
+                    Text(L("Авто", "Auto")).tag(DocEngine.auto)
+                    Text(L("Microsoft Office / Keynote", "Microsoft Office / Keynote")).tag(DocEngine.office)
+                    Text("LibreOffice").tag(DocEngine.libreOffice)
+                }
+                .disabled(Tools.libreOffice == nil)
+                .help(L("Авто: Office или Keynote, а если их нет — LibreOffice.",
+                        "Auto: Office or Keynote, falling back to LibreOffice."))
             } header: {
                 Text(L("Инструменты", "Tools"))
             } footer: {

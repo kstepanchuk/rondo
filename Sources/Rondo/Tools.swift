@@ -41,6 +41,13 @@ enum Tools {
     static var powerPoint: Bool { hasApp("com.microsoft.Powerpoint") }
     static var keynote: Bool { hasApp("com.apple.Keynote") }
 
+    /// True when Office documents should go through LibreOffice: chosen in Settings,
+    /// or Auto/Office with no Office app for the job. False if LibreOffice is missing.
+    static func useLibreOffice(insteadOf nativeAvailable: Bool) -> Bool {
+        guard libreOffice != nil else { return false }
+        return Prefs.shared.docEngine == .libreOffice || !nativeAvailable
+    }
+
     /// Runs a process, throwing with its stderr on failure. Returns stdout.
     @discardableResult
     static func run(_ exe: String, _ args: [String], cwd: URL? = nil) throws -> String {
@@ -111,7 +118,9 @@ enum Office {
 
     static func word(_ src: URL, to dest: URL, format: String) throws {
         // Use the native app when present; otherwise LibreOffice can export headlessly.
-        guard Tools.word else { return try libreOfficeConvert(src, to: dest, format: dest.pathExtension) }
+        if Tools.useLibreOffice(insteadOf: Tools.word) {
+            return try libreOfficeConvert(src, to: dest, format: dest.pathExtension)
+        }
         // format: "format PDF", "format document" (docx), "format rtf", "format plain text"
         try staged(src, outName: "out." + dest.pathExtension, dest: dest) { i, o in
             """
@@ -127,8 +136,20 @@ enum Office {
 
     static func excel(_ src: URL, to dest: URL, format: String) throws {
         // format: "PDF file format", "CSV file format", "Excel XML file format"
-        guard Tools.excel else { return try libreOfficeConvert(src, to: dest, format: dest.pathExtension) }
-        try staged(src, outName: "out." + dest.pathExtension, dest: dest) { i, o in
+        if Tools.useLibreOffice(insteadOf: Tools.excel) {
+            return try libreOfficeConvert(src, to: dest, format: dest.pathExtension)
+        }
+        // Excel reads a UTF-8 CSV without a byte-order mark in the legacy Mac encoding,
+        // which garbles Cyrillic and other non-ASCII text. Hand it a copy with the BOM.
+        var input = src
+        let tmp = Paths.temp()
+        defer { try? FileManager.default.removeItem(at: tmp) }
+        if ["csv", "tsv"].contains(src.pathExtension.lowercased()), let data = try? Data(contentsOf: src),
+           !data.starts(with: [0xEF, 0xBB, 0xBF]), String(data: data, encoding: .utf8) != nil {
+            input = tmp.appendingPathComponent(src.lastPathComponent)
+            try (Data([0xEF, 0xBB, 0xBF]) + data).write(to: input)
+        }
+        try staged(input, outName: "out." + dest.pathExtension, dest: dest) { i, o in
             """
             tell application "Microsoft Excel"
                 open \(Tools.quote(i))
@@ -141,7 +162,9 @@ enum Office {
     }
 
     static func presentationToPDF(_ src: URL, to dest: URL) throws {
-        if Tools.powerPoint {
+        if Tools.useLibreOffice(insteadOf: Tools.powerPoint || Tools.keynote) {
+            try libreOfficeConvert(src, to: dest, format: "pdf")
+        } else if Tools.powerPoint {
             try staged(src, outName: "out.pdf", dest: dest) { i, o in
                 """
                 set outPath to (POSIX file \(Tools.quote(o))) as text

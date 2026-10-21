@@ -2,6 +2,8 @@ import AppKit
 
 enum ThemeChoice: String, CaseIterable { case system, dark, light }
 enum LanguageChoice: String, CaseIterable { case system, ru, en }
+/// Which app converts Word/Excel/PowerPoint files.
+enum DocEngine: String, CaseIterable { case auto, office, libreOffice }
 
 final class Prefs: ObservableObject {
     static let shared = Prefs()
@@ -20,6 +22,9 @@ final class Prefs: ObservableObject {
     @Published var saveNextToSource: Bool {
         didSet { d.set(saveNextToSource, forKey: "saveNextToSource") }
     }
+    @Published var docEngine: DocEngine {
+        didSet { d.set(docEngine.rawValue, forKey: "docEngine") }
+    }
     @Published var history: [String] {
         didSet { d.set(history, forKey: "history") }
     }
@@ -29,6 +34,7 @@ final class Prefs: ObservableObject {
         language = LanguageChoice(rawValue: d.string(forKey: "language") ?? "") ?? .system
         revealResult = d.object(forKey: "revealResult") as? Bool ?? false
         saveNextToSource = d.object(forKey: "saveNextToSource") as? Bool ?? true
+        docEngine = DocEngine(rawValue: d.string(forKey: "docEngine") ?? "") ?? .auto
         history = d.stringArray(forKey: "history") ?? []
     }
 

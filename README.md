@@ -61,7 +61,7 @@ brew install --cask kstepanchuk/rondo/rondo
 brew install ffmpeg pandoc sevenzip
 ```
 
-DOCX, XLSX and PPTX to PDF use Microsoft Office or Keynote when available. Otherwise, install the open-source LibreOffice command-line converter with `brew install --cask libreoffice`; Rondo runs it headlessly and keeps files on your Mac.
+DOCX, XLSX and PPTX to PDF use Microsoft Office or Keynote when available. Otherwise, install the open-source LibreOffice command-line converter with `brew install --cask libreoffice`; Rondo runs it headlessly and keeps files on your Mac. If you have both, pick the engine in Settings → Tools → *Document engine*.
 
 **Updates.** Rondo checks GitHub Releases once a day, verifies the update's SHA-256 and code signature, and relaunches itself. You can also use *Check for Updates…* in the menu.
 

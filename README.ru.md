@@ -61,7 +61,7 @@ brew install --cask kstepanchuk/rondo/rondo
 brew install ffmpeg pandoc sevenzip
 ```
 
-Конвертация DOCX, XLSX и PPTX в PDF использует Microsoft Office или Keynote, если они доступны. Если их нет, установите LibreOffice с открытым исходным кодом: `brew install --cask libreoffice`. Rondo запускает его в фоновом режиме, не открывая офисное приложение.
+Конвертация DOCX, XLSX и PPTX в PDF использует Microsoft Office или Keynote, если они доступны. Если их нет, установите LibreOffice с открытым исходным кодом: `brew install --cask libreoffice`. Rondo запускает его в фоновом режиме, не открывая офисное приложение. Если установлены оба, движок выбирается в Настройках → Инструменты → «Движок для документов».
 
 **Обновления.** Rondo раз в день проверяет GitHub Releases, перед установкой сверяет SHA-256 и подпись и сам перезапускается. Проверить вручную можно через меню «Проверить обновления…».
 
