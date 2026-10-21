@@ -53,7 +53,7 @@ brew install --cask kstepanchuk/rondo/rondo
 **DMG**: download `Rondo-x.y.z.dmg` from [Releases](https://github.com/kstepanchuk/rondo/releases/latest) and drag Rondo to Applications.
 
 > [!NOTE]
-> Rondo isn't notarized yet. If you install from the DMG, allow the first launch in *System Settings → Privacy & Security → Open Anyway*. Homebrew installs don't need this.
+> Rondo isn't notarized yet. If macOS won't open it after installing from the DMG, drag **Разрешить запуск** (“Allow launch”) from the DMG into a Terminal window and press Return: it removes the download quarantine from Rondo.app only and opens it. Or use *System Settings → Privacy & Security → Open Anyway*. Homebrew installs don't need this.
 
 **Optional engines:**
 

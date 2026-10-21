@@ -34,6 +34,9 @@ ln -s /Applications "$STAGE/Applications"
 mkdir -p "$STAGE/.background"
 cp Resources/dmg/background.tiff "$STAGE/.background/background.tiff"
 cp Resources/dmg/DS_Store "$STAGE/.DS_Store"
+# Helper for un-notarized builds: removes the download quarantine from Rondo.app only.
+cp Resources/dmg/allow.command "$STAGE/Разрешить запуск.command"
+chmod +x "$STAGE/Разрешить запуск.command"
 hdiutil create -quiet -volname "Rondo" -srcfolder "$STAGE" -fs HFS+ -format UDZO -ov "dist/Rondo-$VERSION.dmg"
 
 # Checksums: the in-app updater verifies the DMG against Rondo-<ver>.dmg.sha256.
