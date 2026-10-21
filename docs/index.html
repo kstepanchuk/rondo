@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rondo — try the wheel</title>
+<meta name="description" content="Try Rondo's radial file converter in your browser: drag a file, hold Shift, drop it on a format.">
+<meta property="og:image" content="https://kstepanchuk.github.io/rondo/social-preview.png">
+<link rel="icon" href="icon.png">
+<style>
+  :root {
+    --bg: #0d0d10; --panel: #17161a; --sector: #222024; --accent: #e5292f; --text: #f3f1f2;
+    --muted: rgba(243,241,242,.55); --stroke: rgba(255,255,255,.08); --file: #2a282d;
+  }
+  @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) {
+    --bg: #f4f7fc; --panel: #ffffff; --sector: #edf2fc; --accent: #2178f2; --text: #1a1a1a;
+    --muted: rgba(26,26,26,.5); --stroke: rgba(33,120,242,.12); --file: #ffffff; } }
+  :root[data-theme="light"] {
+    --bg: #f4f7fc; --panel: #ffffff; --sector: #edf2fc; --accent: #2178f2; --text: #1a1a1a;
+    --muted: rgba(26,26,26,.5); --stroke: rgba(33,120,242,.12); --file: #ffffff; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--bg); color: var(--text); font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
+         overflow-x: hidden; -webkit-user-select: none; user-select: none; }
+  header { max-width: 900px; margin: 0 auto; padding: 32px 16px 8px; display: flex; gap: 16px; align-items: center; }
+  header img { width: 56px; height: 56px; }
+  h1 { margin: 0; font-size: 28px; letter-spacing: -.02em; }
+  header p { margin: 2px 0 0; color: var(--muted); }
+  .theme { margin-left: auto; background: var(--panel); border: 1px solid var(--stroke); color: var(--text);
+           border-radius: 999px; padding: 6px 12px; cursor: pointer; font: inherit; font-size: 13px; }
+  main { max-width: 900px; margin: 0 auto; padding: 8px 16px 40px; }
+  .stage { position: relative; height: 460px; border-radius: 20px; background: var(--panel); border: 1px solid var(--stroke);
+           overflow: hidden; touch-action: none; }
+  .hint { position: absolute; left: 0; right: 0; bottom: 18px; text-align: center; color: var(--muted); font-size: 14px; pointer-events: none; padding: 0 16px; }
+  .hint kbd { background: var(--sector); border: 1px solid var(--stroke); border-radius: 6px; padding: 1px 6px; font: inherit; color: var(--text); }
+  .files { position: absolute; left: 24px; top: 24px; display: flex; flex-direction: column; gap: 14px; }
+  .file { width: 118px; padding: 10px 6px 8px; border-radius: 12px; text-align: center; cursor: grab; background: var(--file);
+          border: 1px solid var(--stroke); transition: transform .15s; }
+  .file:hover { transform: translateY(-2px); }
+  .file .ic { font-size: 34px; line-height: 1; }
+  .file .nm { font-size: 11px; margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ghost { position: fixed; pointer-events: none; z-index: 20; opacity: .9; transform: translate(-50%, -50%) scale(.9); }
+  .wheel { position: fixed; width: 380px; height: 380px; z-index: 10; pointer-events: none; transform: translate(-50%, -50%) scale(.7);
+           opacity: 0; transition: transform .28s cubic-bezier(.2,1.4,.4,1), opacity .15s; }
+  .wheel.on { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  .wheel svg { width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 8px 24px rgba(0,0,0,.35)); }
+  .sector path { fill: var(--sector); transition: fill .12s, transform .15s; transform-origin: 190px 190px; }
+  .sector.hot path { fill: var(--accent); transform: scale(1.04); }
+  .sector text { fill: var(--text); font-size: 12px; font-weight: 600; text-anchor: middle; }
+  .sector .glyph { font-size: 18px; }
+  .sector.hot text { fill: #fff; }
+  .hub circle { fill: var(--sector); stroke: var(--stroke); }
+  .hub .key { fill: var(--accent); font-size: 22px; font-weight: 700; text-anchor: middle; }
+  .hub .mode { fill: var(--muted); font-size: 11px; text-anchor: middle; }
+  .result { position: fixed; z-index: 15; transform: translate(-50%, -50%); pointer-events: none; }
+  .ring { width: 72px; height: 72px; border-radius: 50%; background: var(--panel); box-shadow: 0 6px 18px rgba(0,0,0,.3); display: grid; place-items: center; }
+  .ring svg { width: 52px; height: 52px; }
+  .toast { position: absolute; right: 18px; top: 18px; background: var(--panel); border: 1px solid var(--accent);
+           border-radius: 14px; padding: 10px 14px; min-width: 220px; box-shadow: 0 8px 24px rgba(0,0,0,.25);
+           opacity: 0; transform: translateY(-8px); transition: .25s; }
+  .toast.on { opacity: 1; transform: none; }
+  .toast b { color: var(--accent); display: block; font-size: 13px; }
+  .toast span { font-size: 13px; }
+  .cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 22px; align-items: center; }
+  .btn { background: var(--accent); color: #fff; text-decoration: none; padding: 10px 18px; border-radius: 12px; font-weight: 600; }
+  .btn.alt { background: var(--panel); color: var(--text); border: 1px solid var(--stroke); }
+  code { background: var(--panel); border: 1px solid var(--stroke); border-radius: 8px; padding: 6px 10px; font-size: 13px; }
+  .modes { display: flex; gap: 8px; margin: 14px 0 0; flex-wrap: wrap; }
+  .modes button { font: inherit; font-size: 13px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--stroke);
+                  background: var(--panel); color: var(--text); cursor: pointer; }
+  .modes button.on { background: var(--accent); color: #fff; border-color: transparent; }
+  @media (max-width: 600px) {
+    .stage { height: 520px; }
+    .wheel { width: 300px; height: 300px; }
+    header h1 { font-size: 22px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <img src="icon.png" alt="">
+  <div>
+    <h1>Rondo</h1>
+    <p>Drag a file, hold a key, drop it on a format. Free &amp; open-source for macOS.</p>
+  </div>
+  <button class="theme" id="theme" aria-label="Toggle theme">◐ Theme</button>
+</header>
+<main>
+  <div class="stage" id="stage">
+    <div class="files" id="files"></div>
+    <div class="toast" id="toast"><b id="toastTitle"></b><span id="toastSub"></span></div>
+    <div class="hint" id="hint">Drag a file and hold <kbd>⇧ Shift</kbd> (convert), <kbd>⌃ Ctrl</kbd> (tools) or <kbd>⌥ Alt</kbd> (actions). Scroll to switch.</div>
+  </div>
+  <div class="modes" id="modes" aria-label="Wheel for touch screens">
+    <button data-mode="0" class="on">⇧ Convert</button><button data-mode="1">⌃ Tools</button><button data-mode="2">⌥ Actions</button>
+    <span style="color:var(--muted);font-size:13px;align-self:center">On a phone: pick a wheel, then press and hold a file.</span>
+  </div>
+  <div class="cta">
+    <a class="btn" href="https://github.com/kstepanchuk/rondo/releases/latest">Download for Mac</a>
+    <a class="btn alt" href="https://github.com/kstepanchuk/rondo">★ GitHub</a>
+    <code>brew install --cask kstepanchuk/rondo/rondo</code>
+  </div>
+</main>
+<div class="wheel" id="wheel"><svg viewBox="0 0 380 380" id="svg"></svg></div>
+
+<script>
+// A faithful-enough copy of Rondo's wheel: which sectors appear depends on the file kind and the held key.
+const FILES = [
+  { name: "IMG_2041.HEIC", kind: "image", ic: "🖼️" },
+  { name: "trip.mp4", kind: "video", ic: "🎬" },
+  { name: "slides.pptx", kind: "slides", ic: "📊" },
+  { name: "DSC_0042.CR3", kind: "raw", ic: "📷" },
+];
+const MODES = [["⇧", "Convert"], ["⌃", "Tools"], ["⌥", "Actions"]];
+const OPS = {
+  image:  [["JPG","🖼"],["PNG","🖼"],["PDF","📄"],["AVIF","🖼"],["TIFF","🖼"],["ICNS+ICO","🔲"]],
+  video:  [["MP4","🎞"],["GIF","🌀"],["WebM","🎞"],["MP3","🎵"],["MOV","🎞"]],
+  slides: [["PDF","📄"]],
+  raw:    [["JPG","🖼"],["HEIC","🖼"],["TIFF 16-bit","🖼"],["PNG","🖼"]],
+};
+const TOOLS = {
+  image:  [["Remove BG","✂️"],["Crop…","⬚"],["Square","◻️"],["Under 1 MB","🗜"],["OCR","🔤"],["Palette","🎨"],["Web-ready","🌐"]],
+  video:  [["Trim & crop","✂️"],["Under 8 MB","🗜"],["9:16","📱"],["Mute","🔇"],["Transcribe","💬"],["First frame","🖼"]],
+  slides: [["Explode to PNG","🗂"]],
+  raw:    [["Crop…","⬚"],["Shot info","📷"],["Under 5 MB","🗜"],["Web-ready","🌐"],["Palette","🎨"]],
+};
+const ACTIONS = [["ZIP","🗜"],["AirDrop","📡"],["Share","📤"],["Shelf","🗄"],["Move to…","📁"],["Copy path","🔗"],["Metadata","ℹ️"]];
+
+function opsFor(kind, mode) { return mode === 0 ? OPS[kind] : mode === 1 ? TOOLS[kind] : ACTIONS; }
+function resultName(file, op, mode) {
+  const base = file.name.replace(/\.[^.]+$/, "");
+  if (mode === 0) return base + "." + op.split(" ")[0].toLowerCase().replace("icns+ico", "icns");
+  if (mode === 1) return base + " (" + op.toLowerCase().replace("…", "") + ")";
+  return null;
+}
+
+const stage = document.getElementById("stage"), filesEl = document.getElementById("files");
+const wheel = document.getElementById("wheel"), svg = document.getElementById("svg");
+let drag = null, mode = null, touchMode = 0, hot = -1, ops = [], lastScroll = 0;
+
+FILES.forEach(f => {
+  const d = document.createElement("div");
+  d.className = "file"; d.innerHTML = `<div class="ic">${f.ic}</div><div class="nm">${f.name}</div>`;
+  d.addEventListener("pointerdown", e => startDrag(e, f, d));
+  filesEl.appendChild(d);
+});
+
+function startDrag(e, file, el) {
+  e.preventDefault();
+  const ghost = el.cloneNode(true); ghost.classList.add("ghost"); document.body.appendChild(ghost);
+  drag = { file, ghost, x: e.clientX, y: e.clientY, touch: e.pointerType !== "mouse" };
+  move(e);
+  if (drag.touch) drag.holdTimer = setTimeout(() => openWheel(touchMode), 350);
+  window.addEventListener("pointermove", move);
+  window.addEventListener("pointerup", drop, { once: true });
+}
+
+function move(e) {
+  if (!drag) return;
+  drag.x = e.clientX; drag.y = e.clientY;
+  drag.ghost.style.left = e.clientX + "px"; drag.ghost.style.top = e.clientY + "px";
+  if (mode !== null) setHot(sectorAt(e.clientX, e.clientY));
+}
+
+function keyMode(e) { return e.shiftKey ? 0 : e.ctrlKey ? 1 : e.altKey ? 2 : null; }
+window.addEventListener("keydown", e => {
+  if (!drag) return;
+  const m = keyMode(e);
+  if (m !== null) { e.preventDefault(); mode === null ? openWheel(m) : setMode(m); }
+  if (e.key === "Escape") closeWheel();
+});
+window.addEventListener("wheel", e => {
+  if (mode === null || Date.now() - lastScroll < 300) return;
+  e.preventDefault(); lastScroll = Date.now();
+  setMode((mode + (e.deltaY < 0 ? 1 : 2)) % 3);
+}, { passive: false });
+
+function openWheel(m) {
+  if (!drag) return;
+  wheel.style.left = drag.x + "px"; wheel.style.top = drag.y + "px";
+  wheel.dataset.cx = drag.x; wheel.dataset.cy = drag.y;
+  setMode(m);
+  requestAnimationFrame(() => wheel.classList.add("on"));
+  document.getElementById("hint").style.opacity = 0;
+}
+
+function setMode(m) { mode = m; ops = opsFor(drag.file.kind, m); hot = -1; render(); }
+
+function closeWheel() { wheel.classList.remove("on"); mode = null; hot = -1; }
+
+function sectorAt(x, y) {
+  const cx = +wheel.dataset.cx, cy = +wheel.dataset.cy, scale = wheel.offsetWidth / 380;
+  const dx = (x - cx) / scale, dy = (y - cy) / scale, r = Math.hypot(dx, dy);
+  if (r < 60 || r > 190) return -1;
+  let a = (Math.atan2(dx, -dy) * 180 / Math.PI + 360) % 360;
+  return Math.min(Math.floor(a / (360 / ops.length)), ops.length - 1);
+}
+
+function setHot(i) {
+  if (i === hot) return; hot = i;
+  svg.querySelectorAll(".sector").forEach((s, j) => s.classList.toggle("hot", j === i));
+  if (i >= 0 && navigator.vibrate) navigator.vibrate(8);
+}
+
+function arc(i, n) {
+  const step = 2 * Math.PI / n, gap = n > 1 ? 0.02 : 0, R = 176, r = 66, c = 190;
+  const a0 = i * step + gap - Math.PI / 2, a1 = (i + 1) * step - gap - Math.PI / 2;
+  const p = (rad, a) => `${c + rad * Math.cos(a)},${c + rad * Math.sin(a)}`;
+  const large = a1 - a0 > Math.PI ? 1 : 0;
+  if (n === 1) return `M ${c} ${c - R} A ${R} ${R} 0 1 1 ${c - 0.01} ${c - R} L ${c - 0.01} ${c - r} A ${r} ${r} 0 1 0 ${c} ${c - r} Z`;
+  return `M ${p(R, a0)} A ${R} ${R} 0 ${large} 1 ${p(R, a1)} L ${p(r, a1)} A ${r} ${r} 0 ${large} 0 ${p(r, a0)} Z`;
+}
+
+function render() {
+  const n = ops.length;
+  let html = `<circle cx="190" cy="190" r="186" fill="var(--panel)"/>`;
+  ops.forEach(([title, glyph], i) => {
+    const mid = (i + 0.5) * 2 * Math.PI / n - Math.PI / 2, rr = 122;
+    const x = 190 + rr * Math.cos(mid), y = 190 + rr * Math.sin(mid);
+    html += `<g class="sector"><path d="${arc(i, n)}"/>` +
+            `<text class="glyph" x="${x}" y="${y - 4}">${glyph}</text><text x="${x}" y="${y + 16}">${title}</text></g>`;
+  });
+  html += `<g class="hub"><circle cx="190" cy="190" r="58"/><text class="key" x="190" y="192">${MODES[mode][0]}</text>` +
+          `<text class="mode" x="190" y="214">${MODES[mode][1]}</text></g>`;
+  svg.innerHTML = html;
+}
+
+function drop(e) {
+  window.removeEventListener("pointermove", move);
+  clearTimeout(drag && drag.holdTimer);
+  const d = drag; drag = null; d.ghost.remove();
+  if (mode !== null && hot >= 0) run(d.file, ops[hot][0], mode, e.clientX, e.clientY);
+  closeWheel();
+}
+
+function run(file, op, m, x, y) {
+  const r = document.createElement("div"); r.className = "result";
+  r.style.left = x + "px"; r.style.top = y + "px";
+  r.innerHTML = `<div class="ring"><svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="20" fill="none" stroke="var(--stroke)" stroke-width="4"/>
+    <circle id="arc" cx="26" cy="26" r="20" fill="none" stroke="var(--accent)" stroke-width="4" stroke-linecap="round"
+      stroke-dasharray="126" stroke-dashoffset="90" transform="rotate(-90 26 26)">
+      <animateTransform attributeName="transform" type="rotate" from="-90 26 26" to="270 26 26" dur=".8s" repeatCount="indefinite"/></circle></svg></div>`;
+  document.body.appendChild(r);
+  setTimeout(() => {
+    r.querySelector(".ring").innerHTML = `<svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="20" fill="none" stroke="var(--accent)" stroke-width="4"/>
+      <path d="M16 27 l7 7 l13 -15" fill="none" stroke="var(--accent)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"
+        stroke-dasharray="40" stroke-dashoffset="40"><animate attributeName="stroke-dashoffset" to="0" dur=".25s" fill="freeze"/></path></svg>`;
+    toast("Done · " + op, resultName(file, op, m) || (op + " — " + file.name));
+    setTimeout(() => { r.style.transition = "opacity .3s"; r.style.opacity = 0; setTimeout(() => r.remove(), 300); }, 900);
+  }, 700);
+}
+
+function toast(title, sub) {
+  const t = document.getElementById("toast");
+  document.getElementById("toastTitle").textContent = title;
+  document.getElementById("toastSub").textContent = sub;
+  t.classList.add("on"); clearTimeout(t.timer); t.timer = setTimeout(() => t.classList.remove("on"), 2600);
+}
+
+document.querySelectorAll("#modes button").forEach(b => b.addEventListener("click", () => {
+  touchMode = +b.dataset.mode;
+  document.querySelectorAll("#modes button").forEach(x => x.classList.toggle("on", x === b));
+}));
+
+const themeBtn = document.getElementById("theme");
+themeBtn.addEventListener("click", () => {
+  const root = document.documentElement;
+  const dark = root.dataset.theme ? root.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  root.dataset.theme = dark ? "light" : "dark";
+});
+</script>
+</body>
+</html>

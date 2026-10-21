@@ -15,7 +15,10 @@
   <img src="https://img.shields.io/badge/macOS-13%2B-1f1f22?logo=apple" alt="macOS 13+">
   <img src="https://img.shields.io/badge/Apple%20Silicon%20%2B%20Intel-universal-1f1f22" alt="Universal">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-555" alt="MIT"></a>
+  <a href="https://github.com/kstepanchuk/rondo/actions/workflows/ci.yml"><img src="https://github.com/kstepanchuk/rondo/actions/workflows/ci.yml/badge.svg" alt="Tests"></a>
 </p>
+
+<h3 align="center"><a href="https://kstepanchuk.github.io/rondo/">▶ Try the wheel in your browser</a></h3>
 
 <p align="center">
   <b>English</b> · <a href="README.ru.md">Русский</a>
@@ -74,11 +77,22 @@ DOCX, XLSX and PPTX to PDF use Microsoft Office or Keynote when available. Other
 | ⚡️ | <kbd>⌥ Option</kbd> | Actions |
 
 1. Start dragging a file (or several) from Finder, a browser, Mail or Photos.
-2. Hold a modifier key and the wheel opens at your cursor. You can switch keys mid-drag.
-3. Drop the file on a sector. The centre of the wheel cancels.
+2. Hold a modifier key and the wheel opens at your cursor. Switch keys mid-drag, or **scroll** over the wheel.
+3. Drop the file on a sector. The centre of the wheel cancels. Rest on **More ›** for the second ring.
 
 **Keyboard**: select files in Finder and press <kbd>⌃⌥Space</kbd>. <kbd>Tab</kbd> switches wheels, arrows and <kbd>Enter</kbd> choose, <kbd>Esc</kbd> closes.
 **Context menu**: right-click → Services → **Rondo…**
+**Shortcuts & Spotlight**: *Convert Files with Rondo* (any format), *Convert to JPEG*, *Compress* and *Convert to PDF* work in the Shortcuts app, folder automations and Spotlight, no wheel needed.
+**Watch folders**: in Settings, pick a folder and an action; new files in it are converted automatically into its *Done* subfolder.
+
+**Command line**: the same engine in Terminal.
+
+```bash
+rondo convert --to jpg *.heic        # results next to each original (or --out DIR)
+rondo list photo.CR3                 # what this file can become
+rondo run fit-8 video.mp4            # any operation by id, e.g. fit under 8 MB
+rondo info photo.CR3                 # camera, lens, exposure, codecs, pages…
+```
 
 ## Features
 
@@ -97,26 +111,29 @@ DOCX, XLSX and PPTX to PDF use Microsoft Office or Keynote when available. Other
 | Presentations ³ | PDF |
 | PDF | TXT, PNG |
 | Subtitles | SRT ⇄ VTT |
+| Data | JSON ⇄ YAML ⇄ CSV ⇄ XLSX, no Office needed |
 
 </details>
 
 <details open>
 <summary><b>🛠 Tools</b></summary>
 
-- **Images**: remove background, shrink, rotate, flip, strip EXIF and GPS, text recognition (OCR), read QR codes, web-ready (≤ 2048 px, JPEG 80 %), extract a colour palette.
-- **RAW**: instant preview (the camera's embedded JPEG), shot info to the clipboard (camera, lens, shutter, aperture, ISO), web-ready, palette.
+- **Images**: **crop** (1:1, 4:5, 9:16, 16:9… in an editor) and square, remove background, **fit under 1 / 5 / 8 / 25 MB**, shrink, rotate, flip, strip EXIF and GPS, text recognition (OCR), read QR codes, web-ready, colour palette.
+- **RAW**: crop, fit under N MB, instant preview (the camera's embedded JPEG), shot info to the clipboard (camera, lens, shutter, aperture, ISO), web-ready, palette.
 - **PDF**: explode to PNG, OCR, QR, split into pages, compress.
 - **Presentations** ³: explode to PNG. 16:9 slides come out at exactly **1920×1080**.
-- **Video** ¹: **trim and crop** (16:9, 9:16, 1:1, 4:5) in a QuickTime-style editor, compress, mute, first frame, extract subtitles, vertical **9:16** for Reels and Shorts, transcribe speech.
+- **Video** ¹: **fit under 8 / 25 MB** (Discord, mail), **trim and crop** (16:9, 9:16, 1:1, 4:5) in a QuickTime-style editor, compress, mute, first frame, extract subtitles, vertical **9:16** for Reels and Shorts, transcribe speech.
 - **Audio** ¹: **trim**, mono, normalize loudness, remove silence, transcribe speech.
+- **Text**: **to UTF-8** from Windows-1251, KOI8-R, DOS-866, UTF-16 (TXT, CSV, SRT, MD, JSON…).
 - **Several files**: merge into one PDF, collage.
+- Compressing shows the savings: `1.2 MB → 340 KB (−72 %)`.
 
 </details>
 
 <details open>
 <summary><b>⚡️ Actions</b></summary>
 
-ZIP, 7Z ⁴, extract (ZIP, 7Z, RAR, TAR…), AirDrop, SHA-256 to the clipboard, copy path, reveal in Finder, duplicate, ZIP several files.
+ZIP, AirDrop, **Share** to any app, **Shelf** (a floating tray to drag files back out of), **Move to…**, copy path, reveal in Finder, **open in Terminal**, **metadata** (camera, GPS, codecs, PDF info), SHA-256, duplicate, 7Z ⁴, extract (ZIP, 7Z, RAR, TAR…), ZIP several files.
 
 **🎛 Resolume Arena**: drop a folder of slides with ⌥ on *Arena deck*. Arena gets a new deck named after the folder, with the images and videos loaded into layer 1 in order (1, 2 … 10). Needs Arena's webserver on (Preferences → Webserver; the port is configurable in advanced settings).
 
@@ -146,8 +163,8 @@ ZIP, 7Z ⁴, extract (ZIP, 7Z, RAR, TAR…), AirDrop, SHA-256 to the clipboard, 
 ## Build
 
 ```bash
-./scripts/build.sh 0.1.5     # dist/Rondo.app, Rondo-0.1.5.dmg and .sha256
-dist/Rondo.app/Contents/MacOS/Rondo --self-test ./samples [--office]
+./scripts/build.sh 0.2.0     # dist/Rondo.app, Rondo-0.2.0.dmg and .sha256
+./scripts/ci-test.sh         # end-to-end tests, the same ones CI runs
 ```
 
 To release: `git tag vX.Y.Z && git push --tags`. GitHub Actions builds and publishes the DMG.

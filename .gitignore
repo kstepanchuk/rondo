@@ -2,3 +2,4 @@
 dist/
 .swiftpm/
 .DS_Store
+.claude/
