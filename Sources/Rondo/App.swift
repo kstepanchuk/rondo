@@ -13,6 +13,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     static func main() {
         let args = CommandLine.arguments
+        if CLI.isInvocation(args) { CLI.run(args) }
         if let i = args.firstIndex(of: "--self-test"), i + 1 < args.count {
             return SelfTest.run(dir: URL(fileURLWithPath: args[i + 1]), office: args.contains("--office"))
         }

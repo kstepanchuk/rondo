@@ -119,7 +119,11 @@ enum Paths {
 
     /// Where results for `src` go: its own folder when that setting is on and the
     /// folder is writable (not a mounted DMG etc.), otherwise ~/Downloads/Rondo.
+    /// Set by the command line's --out.
+    static var overrideOutput: URL?
+
     static func dir(for src: URL?) -> URL {
+        if let overrideOutput { return overrideOutput }
         if Prefs.shared.saveNextToSource, let src {
             let parent = src.deletingLastPathComponent()
             if FileManager.default.isWritableFile(atPath: parent.path) { return parent }
