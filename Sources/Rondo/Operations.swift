@@ -20,7 +20,7 @@ enum Mode: Int, CaseIterable {
 }
 
 enum Kind: Hashable {
-    case folder, image, raw, video, audio, pdf, document, markdown, spreadsheet, csv, presentation, subtitle, archive, other
+    case folder, image, raw, video, audio, data, text, pdf, document, markdown, spreadsheet, csv, presentation, subtitle, archive, other
 
     static func of(_ url: URL) -> Kind {
         var isDir: ObjCBool = false
@@ -37,6 +37,8 @@ enum Kind: Hashable {
         case "csv", "tsv": return .csv
         case "pptx", "ppt", "odp", "key": return .presentation
         case "srt", "vtt": return .subtitle
+        case "json", "jsonl", "yaml", "yml": return .data
+        case "log", "ini", "cfg", "conf", "nfo", "xml", "lrc", "cue", "m3u", "sub", "ass", "ssa", "tex", "bat", "sh": return .text
         case "zip", "7z", "rar", "tar", "gz", "tgz", "bz2", "xz", "tbz", "txz": return .archive
         default: break
         }
@@ -185,13 +187,23 @@ enum Catalog {
             }
             return ops
         case .spreadsheet:
-            guard Tools.excel || Tools.libreOffice != nil else { return [] }
-            return [excel("PDF", "pdf", "PDF file format", symbol: "doc.richtext"),
-                    excel("CSV", "csv", "CSV file format"),
-                    excel("XLSX", "xlsx", "Excel XML file format")]
+            var ops: [Operation] = []
+            if Tools.excel || Tools.libreOffice != nil {
+                ops = [excel("PDF", "pdf", "PDF file format", symbol: "doc.richtext"),
+                       excel("CSV", "csv", "CSV file format"),
+                       excel("XLSX", "xlsx", "Excel XML file format")]
+            } else {
+                ops.append(dataConv("csv", only: "xlsx"))
+            }
+            return ops + [dataConv("json", only: "xlsx"), dataConv("yaml", only: "xlsx")]
         case .csv:
-            guard Tools.excel || Tools.libreOffice != nil else { return [] }
-            return [excel("XLSX", "xlsx", "Excel XML file format"), excel("PDF", "pdf", "PDF file format", symbol: "doc.richtext")]
+            var ops = [dataConv("json"), dataConv("yaml")]
+            if Tools.excel || Tools.libreOffice != nil {
+                ops = [excel("XLSX", "xlsx", "Excel XML file format"), excel("PDF", "pdf", "PDF file format", symbol: "doc.richtext")] + ops
+            } else {
+                ops.insert(dataConv("xlsx"), at: 0)
+            }
+            return ops
         case .presentation:
             guard Tools.powerPoint || Tools.keynote || Tools.libreOffice != nil else { return [] }
             return [single("ppt-pdf", "PDF", "doc.richtext", ext: "pdf") { s, d in
@@ -208,7 +220,9 @@ enum Catalog {
                     else { try Subtitles.vttToSrt(s, to: d) }
                 },
             ]
-        case .archive, .other, .folder:
+        case .data:
+            return ["json", "yaml", "csv", "xlsx"].map { dataConv($0) }
+        case .archive, .other, .folder, .text:
             return []
         }
     }
@@ -314,6 +328,8 @@ enum Catalog {
         case .presentation:
             guard Tools.powerPoint || Tools.keynote || Tools.libreOffice != nil else { return [] }
             return [explodeSlides]
+        case .document, .markdown, .csv, .subtitle, .data, .text:
+            return [toUTF8]
         default:
             return []
         }
@@ -414,6 +430,28 @@ enum Catalog {
             let d = Paths.out(for: s, ext: video ? "mp4" : s.pathExtension, suffix: L(" обрезка", " trimmed"))
             try Editor.export(s, r, to: d, isVideo: video)
             return [d]
+        }
+    }
+
+    /// JSON / YAML / CSV / XLSX conversion without Office. `only` limits it to one source extension.
+    private static func dataConv(_ ext: String, only: String? = nil) -> Operation {
+        let title = ["json": "JSON", "yaml": "YAML", "csv": "CSV", "xlsx": "XLSX"][ext] ?? ext.uppercased()
+        return single("d-\(ext)", title, ext == "xlsx" || ext == "csv" ? "tablecells" : "curlybraces", ext: ext) { s, d in
+            let se = s.pathExtension.lowercased()
+            if let only, se != only { throw RondoError(L("Только для .\(only)", "Only for .\(only)")) }
+            if se == ext || (ext == "yaml" && se == "yml") {
+                throw RondoError(L("Файл уже в \(title)", "Already \(title)"))
+            }
+            try DataConvert.convert(s, to: d)
+        }
+    }
+
+    private static let toUTF8 = Operation(id: "utf8", title: L("В UTF-8", "To UTF-8"), symbol: "character.textbox") { urls in
+        try urls.map { s in
+            let d = Paths.out(for: s, ext: s.pathExtension, suffix: " (UTF-8)")
+            let from = try TextEncoding.toUTF8(s, to: d)
+            DispatchQueue.main.async { Toast.show("UTF-8", sub: L("Было: \(from)", "Was: \(from)")) }
+            return d
         }
     }
 
