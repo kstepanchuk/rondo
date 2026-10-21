@@ -72,7 +72,7 @@ enum Updater {
         NSApp.activate(ignoringOtherApps: true)
         let a = NSAlert()
         a.messageText = L("Доступна версия \(version)", "Version \(version) is available")
-        a.informativeText = String(notes.prefix(600))
+        a.accessoryView = ReleaseNotes.view(notes)
         a.addButton(withTitle: L("Установить и перезапустить", "Install and relaunch"))
         a.addButton(withTitle: L("Позже", "Later"))
         guard a.runModal() == .alertFirstButtonReturn else { return }
@@ -154,5 +154,96 @@ enum Updater {
         a.messageText = title
         a.informativeText = text
         a.runModal()
+    }
+}
+
+
+/// Renders GitHub release notes (Markdown) for the update dialog: clickable links,
+/// "#12" for pull request URLs, @mentions linked to profiles, headings and bold.
+enum ReleaseNotes {
+    static func attributed(_ markdown: String) -> NSAttributedString {
+        let out = NSMutableAttributedString()
+        let body = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
+        let base: [NSAttributedString.Key: Any] = [.font: body, .foregroundColor: NSColor.labelColor]
+        for raw in markdown.replacingOccurrences(of: "\r\n", with: "\n").components(separatedBy: "\n") {
+            var line = raw.trimmingCharacters(in: .whitespaces)
+            var attrs = base
+            if line.hasPrefix("#") {
+                line = line.drop { $0 == "#" }.trimmingCharacters(in: .whitespaces)
+                attrs[.font] = NSFont.boldSystemFont(ofSize: NSFont.systemFontSize)
+                if out.length > 0 && !out.string.hasSuffix("\n\n") {
+                    out.append(NSAttributedString(string: "\n", attributes: base))
+                }
+            } else if line.hasPrefix("* ") || line.hasPrefix("- ") {
+                line = "•  " + line.dropFirst(2)
+            }
+            out.append(inline(line, attrs))
+            out.append(NSAttributedString(string: "\n", attributes: base))
+        }
+        return out
+    }
+
+    /// **bold**, URLs, @mentions in one line.
+    private static func inline(_ line: String, _ attrs: [NSAttributedString.Key: Any]) -> NSAttributedString {
+        let s = NSMutableAttributedString()
+        // Split on ** to toggle bold.
+        for (i, part) in line.components(separatedBy: "**").enumerated() {
+            var a = attrs
+            if i % 2 == 1, let f = a[.font] as? NSFont {
+                a[.font] = NSFontManager.shared.convert(f, toHaveTrait: .boldFontMask)
+            }
+            s.append(links(part, a))
+        }
+        return s
+    }
+
+    private static let token = try! NSRegularExpression(pattern: #"https?://[^\s)]+|@[A-Za-z0-9-]+"#)
+
+    private static func links(_ text: String, _ attrs: [NSAttributedString.Key: Any]) -> NSAttributedString {
+        let s = NSMutableAttributedString()
+        let ns = text as NSString
+        var last = 0
+        for m in token.matches(in: text, range: NSRange(location: 0, length: ns.length)) {
+            s.append(NSAttributedString(string: ns.substring(with: NSRange(location: last, length: m.range.location - last)), attributes: attrs))
+            let match = ns.substring(with: m.range)
+            var label = match
+            var url = URL(string: match)
+            if match.hasPrefix("@") {
+                url = URL(string: "https://github.com/" + match.dropFirst())
+            } else if let u = url, u.host == "github.com" {
+                let parts = u.pathComponents
+                if parts.count >= 5, ["pull", "issues"].contains(parts[3]) { label = "#" + parts[4] }   // /owner/repo/pull/12
+                else if parts.count >= 5, parts[3] == "compare" { label = parts[4] }                    // v0.1.5...v0.1.6
+            }
+            var a = attrs
+            if let url { a[.link] = url }
+            s.append(NSAttributedString(string: label, attributes: a))
+            last = m.range.location + m.range.length
+        }
+        s.append(NSAttributedString(string: ns.substring(from: last), attributes: attrs))
+        return s
+    }
+
+    /// A scrollable, selectable text view sized for an NSAlert accessory.
+    static func view(_ markdown: String) -> NSView {
+        let width: CGFloat = 340
+        let text = NSTextView(frame: NSRect(x: 0, y: 0, width: width, height: 10))
+        text.isEditable = false
+        text.isSelectable = true
+        text.drawsBackground = false
+        text.textContainerInset = NSSize(width: 0, height: 4)
+        text.textStorage?.setAttributedString(attributed(markdown))
+        text.linkTextAttributes = [.foregroundColor: NSColor.linkColor, .cursor: NSCursor.pointingHand]
+        text.layoutManager?.ensureLayout(for: text.textContainer!)
+        let needed = (text.layoutManager?.usedRect(for: text.textContainer!).height ?? 100) + 8
+        let height = min(max(needed, 40), 220)
+        let scroll = NSScrollView(frame: NSRect(x: 0, y: 0, width: width, height: height))
+        scroll.hasVerticalScroller = needed > height
+        scroll.drawsBackground = false
+        scroll.borderType = .noBorder
+        text.frame.size.height = max(needed, height)
+        text.autoresizingMask = [.width]
+        scroll.documentView = text
+        return scroll
     }
 }

@@ -21,6 +21,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             do { print("ok   deck id \(try Arena.addDeck(from: URL(fileURLWithPath: args[i + 1])))"); exit(0) }
             catch { print("FAIL arena: \(error.localizedDescription)"); exit(1) }
         }
+                if let i = args.firstIndex(of: "--render-notes"), i + 2 < args.count {
+            // Renders release notes (Markdown file) as the update dialog shows them (for checking).
+            _ = NSApplication.shared
+            let md = (try? String(contentsOfFile: args[i + 1], encoding: .utf8)) ?? ""
+            NSApp.appearance = NSAppearance(named: .aqua)
+            let v = ReleaseNotes.view(md)
+            let w = NSWindow(contentRect: v.frame, styleMask: [.titled], backing: .buffered, defer: false)
+            w.contentView = v
+            if let rep = v.bitmapImageRepForCachingDisplay(in: v.bounds) {
+                v.cacheDisplay(in: v.bounds, to: rep)
+                try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: args[i + 2]))
+            }
+            return
+        }
                 if let i = args.firstIndex(of: "--verify-update"), i + 1 < args.count {
             // Runs the updater's checks on a local DMG (needs <dmg>.sha256 next to it).
             let dmg = URL(fileURLWithPath: args[i + 1])
