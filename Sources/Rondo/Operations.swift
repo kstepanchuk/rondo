@@ -235,6 +235,7 @@ enum Catalog {
                 ocr,
                 single("web", L("Для веба", "Web-ready"), "globe", ext: "jpg", suffix: " web") { try Extras.webPhoto($0, to: $1) },
                 qr,
+                fitImage(1), fitImage(5), fitImage(8), fitImage(25),
                 single("palette", L("Палитра", "Palette"), "paintpalette", ext: "png", suffix: L(" палитра", " palette")) {
                     try Extras.palette($0, to: $1)
                 },
@@ -248,6 +249,7 @@ enum Catalog {
             var ops: [Operation] = []
             if ff {
                 ops.append(editOp(video: true))
+                ops += [fitVideo(8), fitVideo(25)]
                 ops += [
                     media(L("Сжать", "Compress"), nil, ["-c:v", "libx264", "-preset", "slow", "-crf", "28", "-pix_fmt", "yuv420p",
                                                         "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart"],
@@ -288,6 +290,7 @@ enum Catalog {
                     try Raw.embeddedPreview($0, to: $1)
                 },
                 single("web", L("Для веба", "Web-ready"), "globe", ext: "jpg", suffix: " web") { try Extras.webPhoto($0, to: $1) },
+                fitImage(1), fitImage(5), fitImage(8), fitImage(25),
                 Operation(id: "raw-info", title: L("Данные съёмки", "Shot info"), symbol: "camera") { urls in
                     let text = try urls.map { "\($0.lastPathComponent): \(try Raw.shotInfo($0))" }.joined(separator: "\n")
                     DispatchQueue.main.async {
@@ -387,6 +390,20 @@ enum Catalog {
             }
         }
     }
+
+    private static func fitImage(_ mb: Int) -> Operation {
+        single("fit-\(mb)", L("До \(mb) МБ", "Under \(mb) MB"), "arrow.down.right.and.arrow.up.left.circle",
+               ext: "jpg", suffix: L(" до \(mb) МБ", " \(mb)MB")) { try Extras.fitImage($0, to: $1, maxBytes: mb * 1_000_000) }
+    }
+
+    private static func fitVideo(_ mb: Int) -> Operation {
+        single("vfit-\(mb)", L("До \(mb) МБ", "Under \(mb) MB"), "arrow.down.right.and.arrow.up.left.circle",
+               ext: "mp4", suffix: L(" до \(mb) МБ", " \(mb)MB")) { try Extras.fitVideo($0, to: $1, maxBytes: mb * 1_000_000) }
+    }
+
+    /// Operations whose point is a smaller file: the toast shows the savings.
+    static let shrinking: Set<String> = ["web", "v-small", "pdf-small", "img-half", "img-exif",
+                                         "fit-1", "fit-5", "fit-8", "fit-25", "vfit-8", "vfit-25"]
 
     /// "Trim…" (audio/video) / "Trim & crop…" (video): opens the editor for the first file.
     private static func editOp(video: Bool) -> Operation {

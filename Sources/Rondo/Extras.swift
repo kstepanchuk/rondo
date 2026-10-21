@@ -63,6 +63,70 @@ enum Extras {
         guard CGImageDestinationFinalize(dst) else { throw RondoError(L("Ошибка записи", "Write failed")) }
     }
 
+    // MARK: Fit under a size
+
+    /// A JPEG no bigger than `maxBytes`: lowers quality first (to 50 %), then the pixel
+    /// size (down to 640 px on the long side). Throws rather than produce a uselessly tiny file.
+    static func fitImage(_ src: URL, to dest: URL, maxBytes: Int) throws {
+        guard let source = CGImageSourceCreateWithURL(src as CFURL, nil),
+              let full = CGImageSourceCreateThumbnailAtIndex(source, 0, [
+                  kCGImageSourceCreateThumbnailFromImageAlways: true,
+                  kCGImageSourceCreateThumbnailWithTransform: true,
+                  kCGImageSourceThumbnailMaxPixelSize: 16384,
+              ] as CFDictionary)
+        else { throw RondoError(L("Не удалось прочитать изображение", "Cannot read image")) }
+
+        func encode(_ img: CGImage, _ q: Double) -> Data? {
+            let data = NSMutableData()
+            guard let dst = CGImageDestinationCreateWithData(data, UTType.jpeg.identifier as CFString, 1, nil) else { return nil }
+            CGImageDestinationAddImage(dst, img, [kCGImageDestinationLossyCompressionQuality: q,
+                                                  kCGImageDestinationBackgroundColor: CGColor(gray: 1, alpha: 1)] as CFDictionary)
+            return CGImageDestinationFinalize(dst) ? data as Data : nil
+        }
+        func scaled(_ img: CGImage, _ f: CGFloat) -> CGImage? {
+            let w = Int(CGFloat(img.width) * f), h = Int(CGFloat(img.height) * f)
+            guard let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: 0,
+                                      space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                      bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue) else { return nil }
+            ctx.interpolationQuality = .high
+            ctx.draw(img, in: CGRect(x: 0, y: 0, width: w, height: h))
+            return ctx.makeImage()
+        }
+
+        var img = full
+        while true {
+            for q in stride(from: 0.9, through: 0.5, by: -0.1) {
+                if let d = encode(img, q), d.count <= maxBytes { return try d.write(to: dest) }
+            }
+            let long = max(img.width, img.height)
+            guard long > 640, let smaller = scaled(img, max(0.6, 640 / CGFloat(long) > 0.85 ? 640 / CGFloat(long) : 0.85)) else {
+                throw RondoError(L("Не помещается в \(ByteCountFormatter.string(fromByteCount: Int64(maxBytes), countStyle: .file)) без потери читаемости",
+                                   "Can't fit in \(ByteCountFormatter.string(fromByteCount: Int64(maxBytes), countStyle: .file)) without becoming unreadable"))
+            }
+            img = smaller
+        }
+    }
+
+    /// Re-encodes a video to land just under `maxBytes` (H.264 + 96 kbps AAC, two-pass bitrate math).
+    static func fitVideo(_ src: URL, to dest: URL, maxBytes: Int) throws {
+        guard let ffprobe = Tools.find("ffprobe") else { throw RondoError(L("Нужен ffmpeg: brew install ffmpeg", "ffmpeg required: brew install ffmpeg")) }
+        let dur = Double(try Tools.run(ffprobe, ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", src.path])
+            .trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
+        guard dur > 0 else { throw RondoError(L("Не удалось узнать длительность видео", "Couldn't read the video's duration")) }
+        let audio = 96_000.0
+        let video = Double(maxBytes) * 8 * 0.94 / dur - audio   // 6 % for container overhead
+        guard video > 150_000 else {
+            throw RondoError(L("Видео слишком длинное для такого размера", "The video is too long for that size"))
+        }
+        let tmp = Paths.temp()
+        defer { try? FileManager.default.removeItem(at: tmp) }
+        let log = tmp.appendingPathComponent("pass").path
+        let common = ["-i", src.path, "-c:v", "libx264", "-preset", "medium", "-b:v", "\(Int(video))", "-pix_fmt", "yuv420p",
+                      "-passlogfile", log]
+        try Tools.ffmpeg(common + ["-pass", "1", "-an", "-f", "mp4", "/dev/null"])
+        try Tools.ffmpeg(common + ["-pass", "2", "-c:a", "aac", "-b:a", "96k", "-movflags", "+faststart", dest.path])
+    }
+
     // MARK: App icons (ICNS + ICO)
 
     private static func square(_ src: URL, _ px: Int) throws -> CGImage {

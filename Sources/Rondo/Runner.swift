@@ -2,6 +2,16 @@ import AppKit
 
 /// Runs operations off the main thread and reports results.
 enum Runner {
+    /// "1,2 МБ → 340 КБ (−72 %)" for the total before and after.
+    static func savings(_ inputs: [URL], _ outputs: [URL]) -> String? {
+        func size(_ u: URL) -> Int64 { (try? u.resourceValues(forKeys: [.fileSizeKey]).fileSize).map(Int64.init) ?? 0 }
+        let before = inputs.map(size).reduce(0, +), after = outputs.map(size).reduce(0, +)
+        guard before > 0, after > 0 else { return nil }
+        let f = { ByteCountFormatter.string(fromByteCount: $0, countStyle: .file) }
+        let pct = Int((Double(after - before) / Double(before) * 100).rounded())
+        return "\(f(before)) → \(f(after)) (\(pct > 0 ? "+" : "−")\(abs(pct)) %)"
+    }
+
     private static var busy = 0 { didSet { AppDelegate.shared?.setBusy(busy > 0) } }
     private static let queue = DispatchQueue(label: "rondo.work", qos: .userInitiated, attributes: .concurrent)
 
@@ -20,6 +30,13 @@ enum Runner {
                         return
                     }
                     outputs.forEach(Prefs.shared.remember)
+                    if Catalog.shrinking.contains(op.id), let saved = savings(urls, outputs) {
+                        Toast.show(L("Готово", "Done") + " · " + op.title, sub: saved) {
+                            NSWorkspace.shared.activateFileViewerSelecting(outputs)
+                        }
+                        if Prefs.shared.revealResult { NSWorkspace.shared.activateFileViewerSelecting(outputs) }
+                        return
+                    }
                     let name = outputs.count == 1 ? outputs[0].lastPathComponent
                         : L("Файлов: \(outputs.count)", "\(outputs.count) files")
                     Toast.show(L("Готово", "Done") + " · " + op.title, sub: name) {
