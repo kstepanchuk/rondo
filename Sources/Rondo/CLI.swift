@@ -33,7 +33,7 @@ enum CLI {
                         print(f.lastPathComponent)
                         for (k, v) in Metadata.describe(f) { print("  \(k): \(v)") }
                     }
-                case "--version": print(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev")
+                case "--version": print(version)
                 default: print(usage)
                 }
             } catch {
@@ -46,6 +46,13 @@ enum CLI {
             RunLoop.main.run(until: Date().addingTimeInterval(0.05))
         }
         exit(code)
+    }
+
+    /// Homebrew links /opt/homebrew/bin/rondo to the app binary; follow the link to find Info.plist.
+    static var version: String {
+        let exe = URL(fileURLWithPath: CommandLine.arguments[0]).resolvingSymlinksInPath()
+        let app = exe.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        return (Bundle(url: app) ?? Bundle.main).object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev"
     }
 
     static let usage = """
