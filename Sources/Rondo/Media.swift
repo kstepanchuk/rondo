@@ -10,6 +10,11 @@ import Vision
 // MARK: - Images (ImageIO)
 
 enum Images {
+    /// ImageIO writes AVIF only on newer macOS versions.
+    static let canWriteAVIF: Bool = {
+        (CGImageDestinationCopyTypeIdentifiers() as? [String] ?? []).contains("public.avif")
+    }()
+
     static func load(_ url: URL) throws -> (CGImageSource, CGImage) {
         guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
               let img = CGImageSourceCreateImageAtIndex(src, 0, [kCGImageSourceShouldAllowFloat: true] as CFDictionary)

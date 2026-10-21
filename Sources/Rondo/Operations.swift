@@ -123,7 +123,8 @@ enum Catalog {
         case .image:
             return [
                 image("JPG", .jpeg), image("PNG", .png), image("HEIC", .heic),
-                image("AVIF", UTType("public.avif")!), image("TIFF", .tiff), image("GIF", .gif),
+            ] + (Images.canWriteAVIF ? [image("AVIF", UTType("public.avif")!)] : []) + [
+                image("TIFF", .tiff), image("GIF", .gif),
                 image("PDF", .pdf, symbol: "doc.richtext"),
                 single("icons", L("Иконка ICNS+ICO", "Icon ICNS+ICO"), "app.badge", ext: nil, suffix: L(" иконки", " icons")) {
                     try Extras.icons($0, into: $1)
@@ -131,7 +132,7 @@ enum Catalog {
             ]
         case .raw:
             return [rawConv("JPG", .jpeg), rawConv("HEIC", .heic), rawConv(L("TIFF 16 бит", "TIFF 16-bit"), .tiff, ext: "tiff"),
-                    rawConv("PNG", .png), rawConv("AVIF", UTType("public.avif")!)]
+                    rawConv("PNG", .png)] + (Images.canWriteAVIF ? [rawConv("AVIF", UTType("public.avif")!)] : [])
         case .video:
             guard ff else { return [] }
             return [
