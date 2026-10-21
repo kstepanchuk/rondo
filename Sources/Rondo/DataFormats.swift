@@ -41,6 +41,11 @@ enum TextEncoding {
         return (best.0, best.1)
     }
 
+    static func isUTF8(_ url: URL) -> Bool {
+        guard let data = try? Data(contentsOf: url) else { return false }
+        return !data.starts(with: [0xFF, 0xFE]) && !data.starts(with: [0xFE, 0xFF]) && String(data: data, encoding: .utf8) != nil
+    }
+
     static func toUTF8(_ src: URL, to dest: URL) throws -> String {
         let data = try Data(contentsOf: src)
         guard data.count < 200_000_000 else { throw RondoError(L("Файл слишком большой", "File too large")) }

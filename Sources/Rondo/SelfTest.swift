@@ -7,7 +7,7 @@ enum SelfTest {
         _ = NSApplication.shared
         // --ci also skips operations that need special content (a QR code, a subtitle track,
         // a person to cut out) or a GUI, so a red badge means something is really broken.
-        let ciSkip: Set<String> = ci ? ["qr", "v-subs", "img-bg", "utf8"] : []
+        let ciSkip: Set<String> = ci ? ["qr", "v-subs", "img-bg"] : []
         let skip: Set<String> = ciSkip.union(["path", "reveal", "stt", "airdrop", "v-edit", "a-edit", "share", "shelf", "move", "terminal", "meta", "crop"])
         let officeIDs: (String) -> Bool = { $0.hasPrefix("w-") || $0.hasPrefix("x-") || $0 == "ppt-pdf" || $0 == "md-pdf" }
         var failures = 0

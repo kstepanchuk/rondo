@@ -489,7 +489,12 @@ enum Catalog {
     }
 
     private static let toUTF8 = Operation(id: "utf8", title: L("В UTF-8", "To UTF-8"), symbol: "character.textbox") { urls in
-        try urls.map { s in
+        // A file that is already UTF-8 isn't an error: nothing to do, say so.
+        try urls.compactMap { s in
+            if TextEncoding.isUTF8(s) {
+                DispatchQueue.main.async { Toast.show("UTF-8", sub: L("«\(s.lastPathComponent)» уже в UTF-8", "“\(s.lastPathComponent)” is already UTF-8")) }
+                return nil
+            }
             let d = Paths.out(for: s, ext: s.pathExtension, suffix: " (UTF-8)")
             let from = try TextEncoding.toUTF8(s, to: d)
             DispatchQueue.main.async { Toast.show("UTF-8", sub: L("Было: \(from)", "Was: \(from)")) }
