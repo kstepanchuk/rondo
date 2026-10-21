@@ -234,6 +234,7 @@ enum Catalog {
         switch k {
         case .image:
             var ops = [
+                photoCrop, square,
                 single("img-half", L("Уменьшить ×0.5", "Shrink ×0.5"), "arrow.down.right.and.arrow.up.left", suffix: L(" уменьш", " small")) {
                     try Images.halve($0, to: $1)
                 },
@@ -300,6 +301,7 @@ enum Catalog {
             return ops
         case .raw:
             return [
+                photoCrop, square,
                 single("raw-preview", L("Быстрое превью", "Quick preview"), "bolt", ext: "jpg", suffix: L(" превью", " preview")) {
                     try Raw.embeddedPreview($0, to: $1)
                 },
@@ -447,6 +449,26 @@ enum Catalog {
             let d = Paths.out(for: s, ext: video ? "mp4" : s.pathExtension, suffix: L(" обрезка", " trimmed"))
             try Editor.export(s, r, to: d, isVideo: video)
             return [d]
+        }
+    }
+
+    private static let square = Operation(id: "square", title: L("Квадрат", "Square"), symbol: "square") { urls in
+        try urls.map { s in
+            let img = try PhotoCrop.upright(s)
+            let r = PhotoCrop.centred(1, in: CGSize(width: img.width, height: img.height))
+            let d = Paths.out(for: s, ext: PhotoCrop.outputExt(s), suffix: L(" квадрат", " square"))
+            try PhotoCrop.crop(s, normalized: r, to: d)
+            return d
+        }
+    }
+
+    /// Editor for the first photo; the same frame is applied to all of them.
+    private static let photoCrop = Operation(id: "crop", title: L("Кроп…", "Crop…"), symbol: "crop", interactive: true) { urls in
+        guard let first = urls.first, let rect = PhotoCrop.edit(first) else { return [] }
+        return try urls.map { s in
+            let d = Paths.out(for: s, ext: PhotoCrop.outputExt(s), suffix: L(" кроп", " crop"))
+            try PhotoCrop.crop(s, normalized: rect, to: d)
+            return d
         }
     }
 
