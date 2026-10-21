@@ -3,9 +3,12 @@ import AppKit
 /// `Rondo --self-test <dir> [--office]`: runs every operation on every file in <dir>
 /// and prints the result. Speech and Office operations are skipped unless asked for.
 enum SelfTest {
-    static func run(dir: URL, office: Bool) {
+    static func run(dir: URL, office: Bool, ci: Bool = false) {
         _ = NSApplication.shared
-        let skip: Set<String> = ["path", "reveal", "stt", "airdrop", "v-edit", "a-edit", "share", "shelf", "move", "terminal", "meta", "crop"]
+        // --ci also skips operations that need special content (a QR code, a subtitle track,
+        // a person to cut out) or a GUI, so a red badge means something is really broken.
+        let ciSkip: Set<String> = ci ? ["qr", "v-subs", "img-bg", "utf8"] : []
+        let skip: Set<String> = ciSkip.union(["path", "reveal", "stt", "airdrop", "v-edit", "a-edit", "share", "shelf", "move", "terminal", "meta", "crop"])
         let officeIDs: (String) -> Bool = { $0.hasPrefix("w-") || $0.hasPrefix("x-") || $0 == "ppt-pdf" || $0 == "md-pdf" }
         var failures = 0
 

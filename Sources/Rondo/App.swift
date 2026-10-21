@@ -15,7 +15,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let args = CommandLine.arguments
         if CLI.isInvocation(args) { CLI.run(args) }
         if let i = args.firstIndex(of: "--self-test"), i + 1 < args.count {
-            return SelfTest.run(dir: URL(fileURLWithPath: args[i + 1]), office: args.contains("--office"))
+            return SelfTest.run(dir: URL(fileURLWithPath: args[i + 1]), office: args.contains("--office"), ci: args.contains("--ci"))
         }
         if let i = args.firstIndex(of: "--watch-test"), i + 3 < args.count {
             // Watches <dir> with <action> for <seconds>, for testing (rules go to this binary's defaults).

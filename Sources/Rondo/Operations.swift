@@ -20,7 +20,7 @@ enum Mode: Int, CaseIterable {
 }
 
 enum Kind: Hashable {
-    case folder, image, raw, video, audio, data, text, pdf, document, markdown, spreadsheet, csv, presentation, subtitle, archive, other
+    case folder, image, raw, video, audio, data, yaml, text, pdf, document, markdown, spreadsheet, csv, presentation, subtitle, archive, other
 
     static func of(_ url: URL) -> Kind {
         var isDir: ObjCBool = false
@@ -37,7 +37,8 @@ enum Kind: Hashable {
         case "csv", "tsv": return .csv
         case "pptx", "ppt", "odp", "key": return .presentation
         case "srt", "vtt": return .subtitle
-        case "json", "jsonl", "yaml", "yml": return .data
+        case "json", "jsonl": return .data
+        case "yaml", "yml": return .yaml
         case "log", "ini", "cfg", "conf", "nfo", "xml", "lrc", "cue", "m3u", "sub", "ass", "ssa", "tex", "bat", "sh": return .text
         case "zip", "7z", "rar", "tar", "gz", "tgz", "bz2", "xz", "tbz", "txz": return .archive
         default: break
@@ -221,7 +222,9 @@ enum Catalog {
                 },
             ]
         case .data:
-            return ["json", "yaml", "csv", "xlsx"].map { dataConv($0) }
+            return ["yaml", "csv", "xlsx"].map { dataConv($0) }
+        case .yaml:
+            return ["json", "csv", "xlsx"].map { dataConv($0) }
         case .archive, .other, .folder, .text:
             return []
         }
@@ -330,7 +333,7 @@ enum Catalog {
         case .presentation:
             guard Tools.powerPoint || Tools.keynote || Tools.libreOffice != nil else { return [] }
             return [explodeSlides]
-        case .document, .markdown, .csv, .subtitle, .data, .text:
+        case .document, .markdown, .csv, .subtitle, .data, .yaml, .text:
             return [toUTF8]
         default:
             return []
