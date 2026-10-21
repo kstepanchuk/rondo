@@ -17,6 +17,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if let i = args.firstIndex(of: "--self-test"), i + 1 < args.count {
             return SelfTest.run(dir: URL(fileURLWithPath: args[i + 1]), office: args.contains("--office"))
         }
+        if let i = args.firstIndex(of: "--watch-test"), i + 3 < args.count {
+            // Watches <dir> with <action> for <seconds>, for testing (rules go to this binary's defaults).
+            _ = NSApplication.shared
+            WatchFolders.shared.rules = [WatchRule(path: args[i + 1], action: args[i + 2])]
+            RunLoop.main.run(until: Date().addingTimeInterval(Double(args[i + 3]) ?? 10))
+            WatchFolders.shared.rules = []
+            exit(0)
+        }
         if let i = args.firstIndex(of: "--arena-deck"), i + 1 < args.count {
             // Creates an Arena deck from a folder and prints its id (for testing).
             do { print("ok   deck id \(try Arena.addDeck(from: URL(fileURLWithPath: args[i + 1])))"); exit(0) }
@@ -91,6 +99,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         statusItem.menu = menu
 
         UserShortcuts.refresh()
+        WatchFolders.shared.start()
         Updater.checkInBackgroundIfDue()
         drag.start()
         hotKey.register {
@@ -255,6 +264,8 @@ struct SettingsView: View {
                     Button(L("Открыть", "Open")) { NSWorkspace.shared.open(Paths.output) }
                 }
             }
+
+            WatchFoldersSection()
 
             AdvancedSection()
 
