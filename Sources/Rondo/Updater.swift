@@ -183,16 +183,30 @@ enum ReleaseNotes {
         return out
     }
 
-    /// **bold**, URLs, @mentions in one line.
+    /// `code`, **bold**, *italic*, URLs and @mentions in one line.
     private static func inline(_ line: String, _ attrs: [NSAttributedString.Key: Any]) -> NSAttributedString {
         let s = NSMutableAttributedString()
-        // Split on ** to toggle bold.
-        for (i, part) in line.components(separatedBy: "**").enumerated() {
-            var a = attrs
-            if i % 2 == 1, let f = a[.font] as? NSFont {
-                a[.font] = NSFontManager.shared.convert(f, toHaveTrait: .boldFontMask)
+        // `code` first: its content is shown as is, in a monospaced font.
+        for (ci, chunk) in line.components(separatedBy: "`").enumerated() {
+            if ci % 2 == 1, let f = attrs[.font] as? NSFont {
+                var a = attrs
+                a[.font] = NSFont.monospacedSystemFont(ofSize: f.pointSize - 0.5, weight: .regular)
+                a[.backgroundColor] = NSColor.quaternaryLabelColor
+                s.append(NSAttributedString(string: chunk, attributes: a))
+                continue
             }
-            s.append(links(part, a))
+            for (bi, part) in chunk.components(separatedBy: "**").enumerated() {
+                for (ii, piece) in part.components(separatedBy: "*").enumerated() {
+                    var a = attrs
+                    if let f = a[.font] as? NSFont {
+                        var traits: NSFontTraitMask = []
+                        if bi % 2 == 1 { traits.insert(.boldFontMask) }
+                        if ii % 2 == 1 { traits.insert(.italicFontMask) }
+                        if !traits.isEmpty { a[.font] = NSFontManager.shared.convert(f, toHaveTrait: traits) }
+                    }
+                    s.append(links(piece, a))
+                }
+            }
         }
         return s
     }
