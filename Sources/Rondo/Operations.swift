@@ -81,6 +81,7 @@ enum Catalog {
         if count > 1 {
             if mode != .actions, unique.allSatisfy({ $0 == .pdf || $0 == .image || $0 == .raw }) { batch.append(mergePDF) }
             if mode == .tools, unique.allSatisfy({ $0 == .image || $0 == .raw }) { batch.append(collage) }
+            if mode == .tools, Tools.ffmpeg != nil, unique == [.video] || unique == [.audio] { batch.append(join) }
             if mode == .actions { batch.append(zipAll) }
         }
 
@@ -460,6 +461,64 @@ enum Catalog {
     private static func fitVideo(_ mb: Int) -> Operation {
         single("vfit-\(mb)", L("До \(mb) МБ", "Under \(mb) MB"), "arrow.down.right.and.arrow.up.left.circle",
                ext: "mp4", suffix: L(" до \(mb) МБ", " \(mb)MB")) { try Extras.fitVideo($0, to: $1, maxBytes: mb * 1_000_000) }
+    }
+
+    /// Several clips or tracks → one file, in name order. Same codecs are joined without
+    /// re-encoding; otherwise everything is re-encoded to the first clip's size.
+    private static let join = Operation(id: "join", title: L("Склеить", "Join"), symbol: "film.stack") { urls in
+        let files = urls.sorted { $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending }
+        guard let first = files.first, files.count > 1 else { throw RondoError(L("Нужно хотя бы два файла", "Needs at least two files")) }
+        let video = Kind.of(first) == .video
+        let ext = video ? "mp4" : first.pathExtension.lowercased()
+        let d = Paths.unique(Paths.dir(for: first), L("Склейка", "Joined"), ext)
+        let tmp = Paths.temp()
+        defer { try? FileManager.default.removeItem(at: tmp) }
+
+        // 1) Fast path: concat demuxer, stream copy — only when every file has the same streams.
+        func signature(_ f: URL) -> String? {
+            guard let ffprobe = Tools.find("ffprobe") else { return nil }
+            return try? Tools.run(ffprobe, ["-v", "error", "-show_entries",
+                                            "stream=codec_type,codec_name,width,height,pix_fmt,sample_rate,channels",
+                                            "-of", "csv=p=0", f.path])
+        }
+        let signatures = files.map(signature)
+        let sameStreams = signatures.allSatisfy { $0 != nil && $0 == signatures[0] }
+        let list = tmp.appendingPathComponent("list.txt")
+        try files.map { "file '\($0.path.replacingOccurrences(of: "'", with: "'\\''"))'" }
+            .joined(separator: "\n").write(to: list, atomically: true, encoding: .utf8)
+        if sameStreams, (try? Tools.ffmpeg(["-f", "concat", "-safe", "0", "-protocol_whitelist", "file,pipe",
+                               "-i", list.path, "-c", "copy", "-movflags", "+faststart", d.path])) != nil {
+            return [d]
+        }
+        try? FileManager.default.removeItem(at: d)
+
+        // 2) Re-encode with the concat filter.
+        var args: [String] = []
+        for f in files { args += ["-i", f.path] }
+        var graph = "", inputs = ""
+        if video {
+            guard let ffprobe = Tools.find("ffprobe") else { throw RondoError("ffprobe") }
+            let wh = try Tools.run(ffprobe, ["-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height",
+                                             "-of", "csv=p=0", first.path]).trimmingCharacters(in: .whitespacesAndNewlines)
+                .split(separator: ",").compactMap { Int($0) }
+            let (w, h) = wh.count == 2 ? (wh[0] / 2 * 2, wh[1] / 2 * 2) : (1280, 720)
+            for i in files.indices {
+                graph += "[\(i):v]scale=\(w):\(h):force_original_aspect_ratio=decrease,pad=\(w):\(h):(ow-iw)/2:(oh-ih)/2,setsar=1,fps=30[v\(i)];"
+                graph += "[\(i):a]aresample=48000,aformat=channel_layouts=stereo[a\(i)];"
+                inputs += "[v\(i)][a\(i)]"
+            }
+            graph += "\(inputs)concat=n=\(files.count):v=1:a=1[v][a]"
+            args += ["-filter_complex", graph, "-map", "[v]", "-map", "[a]", "-c:v", "libx264", "-crf", "20",
+                     "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", d.path]
+        } else {
+            for i in files.indices { inputs += "[\(i):a]" }
+            graph = "\(inputs)concat=n=\(files.count):v=0:a=1[a]"
+            args += ["-filter_complex", graph, "-map", "[a]", d.path]
+        }
+        do { try Tools.ffmpeg(args) } catch {
+            throw RondoError(L("Не удалось склеить: у одного из роликов, возможно, нет звука", "Couldn't join: one clip may have no audio"))
+        }
+        return [d]
     }
 
     /// MOV ⇄ MP4 (and MKV/M4V → MP4) by copying the streams: seconds, no quality loss.
