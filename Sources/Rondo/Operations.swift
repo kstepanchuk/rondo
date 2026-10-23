@@ -272,6 +272,13 @@ enum Catalog {
                 single("palette", L("Палитра", "Palette"), "paintpalette", ext: "png", suffix: L(" палитра", " palette")) {
                     try Extras.palette($0, to: $1)
                 },
+                Operation(id: "as-icon", title: L("Иконкой для папки…", "As a folder icon…"), symbol: "folder.badge.gearshape",
+                          interactive: true) { urls in
+                    guard let src = urls.first, let img = NSImage(contentsOf: src) else { return [] }
+                    let targets = CustomIcon.pickTargets()
+                    try CustomIcon.set(img, on: targets)
+                    return []
+                },
             ]
             if #available(macOS 14.0, *) {
                 ops.insert(single("img-bg", L("Убрать фон", "Remove background"), "person.crop.rectangle", ext: "png",
@@ -431,6 +438,15 @@ enum Catalog {
             Metadata.show(urls)
             return []
         }
+        let icon = Operation(id: "icon", title: L("Своя иконка…", "Custom icon…"), symbol: "photo.badge.plus", interactive: true) { urls in
+            guard let img = CustomIcon.pickImage() else { return [] }
+            try CustomIcon.set(img, on: urls)
+            return []
+        }
+        let iconReset = Operation(id: "icon-reset", title: L("Обычная иконка", "Default icon"), symbol: "arrow.uturn.backward.square") { urls in
+            try CustomIcon.set(nil, on: urls)
+            return []
+        }
         let sha = Operation(id: "sha", title: "SHA-256", symbol: "number") { urls in
             let lines = try urls.map { "\(try Extras.sha256($0))  \($0.lastPathComponent)" }
             DispatchQueue.main.async {
@@ -455,7 +471,7 @@ enum Catalog {
         if k == .folder { ops.append(arenaDeck) }
         ops += [zip, airdrop, phone, share, shelf, move, path, reveal, terminal, meta]
         if k != .folder { ops.append(sha) }
-        ops.append(dup)
+        ops += [dup, icon, iconReset]
         if let sevenZip { ops.append(sevenZip) }
         return ops + UserShortcuts.operations
     }

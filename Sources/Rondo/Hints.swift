@@ -79,6 +79,8 @@ enum Hints {
             "sha": ("Контрольная сумма в буфер", "Checksum to clipboard"),
             "dup": ("Копия рядом", "A copy next to it"),
             "icon": ("Картинка как иконка", "An image as its icon"),
+            "icon-reset": ("Вернуть стандартную", "Back to the standard one"),
+            "as-icon": ("Поставить на папки", "Put it on folders"),
             "arena-deck": ("Новая дека с папкой", "A new deck from the folder"),
         ]
         if let (ru, en) = table[id] { return L(ru, en) }

@@ -260,3 +260,56 @@ enum Metadata {
         }
     }
 }
+
+// MARK: - Custom icons
+
+enum CustomIcon {
+    /// The image fitted into a transparent square, so Finder doesn't stretch it.
+    static func squared(_ image: NSImage) -> NSImage {
+        let side: CGFloat = 1024
+        let out = NSImage(size: NSSize(width: side, height: side))
+        out.lockFocus()
+        let s = min(side / image.size.width, side / image.size.height)
+        let w = image.size.width * s, h = image.size.height * s
+        image.draw(in: NSRect(x: (side - w) / 2, y: (side - h) / 2, width: w, height: h))
+        out.unlockFocus()
+        return out
+    }
+
+    static func set(_ image: NSImage?, on urls: [URL]) throws {
+        let icon = image.map(squared)
+        for u in urls where !NSWorkspace.shared.setIcon(icon, forFile: u.path, options: []) {
+            throw RondoError(L("Не удалось изменить иконку «\(u.lastPathComponent)»", "Couldn't change the icon of “\(u.lastPathComponent)”"))
+        }
+    }
+
+    /// Asks for an image (on the main thread).
+    static func pickImage() -> NSImage? {
+        var img: NSImage?
+        DispatchQueue.main.sync {
+            NSApp.activate(ignoringOtherApps: true)
+            let p = NSOpenPanel()
+            p.allowedContentTypes = [.image]
+            p.prompt = L("Выбрать", "Choose")
+            p.message = L("Картинка для иконки", "Picture for the icon")
+            if p.runModal() == .OK, let u = p.url { img = NSImage(contentsOf: u) }
+        }
+        return img
+    }
+
+    /// Asks for folders/files to put an icon on.
+    static func pickTargets() -> [URL] {
+        var urls: [URL] = []
+        DispatchQueue.main.sync {
+            NSApp.activate(ignoringOtherApps: true)
+            let p = NSOpenPanel()
+            p.canChooseDirectories = true
+            p.canChooseFiles = true
+            p.allowsMultipleSelection = true
+            p.prompt = L("Поставить иконку", "Set icon")
+            p.message = L("Каким папкам или файлам поставить эту картинку как иконку?", "Which folders or files get this picture as their icon?")
+            if p.runModal() == .OK { urls = p.urls }
+        }
+        return urls
+    }
+}

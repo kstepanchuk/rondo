@@ -7,7 +7,7 @@ import AppKit
 ///   rondo run img-half photo.png        run any operation by id
 ///   rondo formats                       what each file kind can become
 enum CLI {
-    static let commands: Set<String> = ["convert", "list", "run", "formats", "info", "pages", "watermark", "tags", "help", "--help", "-h", "--version"]
+    static let commands: Set<String> = ["convert", "list", "run", "formats", "info", "pages", "watermark", "tags", "icon", "help", "--help", "-h", "--version"]
 
     static func isInvocation(_ args: [String]) -> Bool {
         args.count > 1 && commands.contains(args[1])
@@ -55,6 +55,17 @@ enum CLI {
                         try AudioTags.write(f, tags: tags, cover: cover, to: d)
                         print("✓ \(f.lastPathComponent) → \(d.path)")
                     }
+                case "icon":
+                    // rondo icon picture.png <folders/files…>   |   rondo icon --reset <folders/files…>
+                    guard rest.count >= 2 else { throw RondoError(usage) }
+                    let reset = rest[0] == "--reset"
+                    let img = reset ? nil : NSImage(contentsOfFile: rest[0])
+                    if !reset && img == nil { throw RondoError("can't read the image \(rest[0])") }
+                    let (_, targets) = try parse(Array(rest.dropFirst()))
+                    var failure: Error?
+                    DispatchQueue.main.sync { do { try CustomIcon.set(img, on: targets) } catch { failure = error } }
+                    if let failure { throw failure }
+                    for t in targets { print("✓ \(t.lastPathComponent): \(reset ? "default icon" : "custom icon")") }
                 case "watermark":
                     guard rest.count >= 2 else { throw RondoError(usage) }
                     let (_, files) = try parse(Array(rest.dropFirst()))
@@ -101,6 +112,7 @@ enum CLI {
           rondo pages keep|delete "1-3,5" <pdfs…>              keep or delete PDF pages
           rondo watermark "DRAFT" <pdfs…>                      diagonal watermark on every page
           rondo tags <audio…> --title T --artist A --cover pic.jpg   audio tags and cover art
+          rondo icon <picture> <folders…>  |  rondo icon --reset <folders…>   custom Finder icons
         Results go next to each original unless --out is given. Originals are never overwritten.
         """
 
