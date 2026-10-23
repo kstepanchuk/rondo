@@ -4,6 +4,7 @@ import Carbon.HIToolbox
 /// Shows the radial menu while a file is being dragged anywhere and ⇧/⌃/⌥ is held.
 /// Uses only mouse monitors and polled modifier flags, so no Accessibility permission is needed.
 final class DragWatcher {
+    static let shared = DragWatcher()
     private var monitors: [Any] = []
     private var timer: Timer?
     private var startCount = 0
@@ -25,9 +26,19 @@ final class DragWatcher {
         guard !dragging, dragPB.changeCount != startCount else { return }
         let k = Payload.kinds(of: dragPB)
         guard !k.isEmpty else { return }
+        begin(kinds: k)
+    }
+
+    /// Starts watching modifiers for a drag of `kinds`. Global monitors don't see drags that
+    /// start inside Rondo itself (the welcome tour's sample file), so those call this directly.
+    func begin(kinds k: [Kind]) {
+        guard !dragging else { return }
         kinds = k
         dragging = true
-        timer = Timer.scheduledTimer(withTimeInterval: 0.03, repeats: true) { [weak self] _ in self?.tick() }
+        // .common: keep ticking while a drag session runs this app's event-tracking loop.
+        let t = Timer(timeInterval: 0.03, repeats: true) { [weak self] _ in self?.tick() }
+        RunLoop.main.add(t, forMode: .common)
+        timer = t
     }
 
     private func tick() {

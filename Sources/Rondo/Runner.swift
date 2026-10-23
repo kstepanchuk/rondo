@@ -12,6 +12,9 @@ enum Runner {
         return "\(f(before)) → \(f(after)) (\(pct > 0 ? "+" : "−")\(abs(pct)) %)"
     }
 
+    /// Posted after an operation succeeds; userInfo has "inputs" and "outputs" ([URL]).
+    static let finished = Notification.Name("RondoOperationFinished")
+
     private static var busy = 0 { didSet { AppDelegate.shared?.setBusy(busy > 0) } }
     private static let queue = DispatchQueue(label: "rondo.work", qos: .userInitiated, attributes: .concurrent)
 
@@ -23,6 +26,9 @@ enum Runner {
             let result = Result { try op.perform(urls) }
             DispatchQueue.main.async {
                 busy -= 1
+                if case .success(let outputs) = result {
+                    NotificationCenter.default.post(name: Runner.finished, object: nil, userInfo: ["inputs": urls, "outputs": outputs])
+                }
                 if case .success = result { ring?.finish(success: true) } else { ring?.finish(success: false) }
                 switch result {
                 case .success(let outputs):

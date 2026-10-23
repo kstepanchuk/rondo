@@ -7,7 +7,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     static weak var shared: AppDelegate?
 
     private var statusItem: NSStatusItem!
-    private let drag = DragWatcher()
+    private let drag = DragWatcher.shared
     private let hotKey = HotKey()
     private var settingsWindow: NSWindow?
 
@@ -80,6 +80,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 try? v.renderPNG(hover: 1)?.write(to: dir.appendingPathComponent("menu-\(name)\(english ? "-en" : "").png"))
             }
             Prefs.shared.theme = .system
+            if args.contains("--tour") {
+                NSApp.appearance = NSAppearance(named: .aqua)
+                for p in 0..<5 {
+                    let host = NSHostingView(rootView: TourView(close: {}, page: p))
+                    host.frame = NSRect(x: 0, y: 0, width: 560, height: 520)
+                    let w = NSWindow(contentRect: host.frame, styleMask: [.titled], backing: .buffered, defer: false)
+                    w.contentView = host
+                    host.layoutSubtreeIfNeeded()
+                    if let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) {
+                        host.cacheDisplay(in: host.bounds, to: rep)
+                        try? rep.representation(using: .png, properties: [:])?.write(to: dir.appendingPathComponent("tour-\(p).png"))
+                    }
+                }
+            }
             if args.contains("--settings") {
                 let host = NSHostingView(rootView: SettingsView(height: 1500))
                 host.frame = NSRect(x: 0, y: 0, width: 460, height: 1500)
@@ -125,7 +139,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         if !UserDefaults.standard.bool(forKey: "welcomed") {
             UserDefaults.standard.set(true, forKey: "welcomed")
-            openSettings()
+            Tour.show()
         }
     }
 
@@ -170,6 +184,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(history)
 
         menu.addItem(withTitle: L("Папка результатов", "Output folder"), action: #selector(openOutput), keyEquivalent: "o").target = self
+        menu.addItem(withTitle: L("Как пользоваться…", "Welcome tour…"), action: #selector(openTour), keyEquivalent: "").target = self
         menu.addItem(withTitle: L("Проверить обновления…", "Check for Updates…"), action: #selector(checkUpdates), keyEquivalent: "").target = self
         menu.addItem(withTitle: L("Настройки…", "Settings…"), action: #selector(openSettings), keyEquivalent: ",").target = self
         menu.addItem(.separator())
@@ -180,6 +195,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         guard let p = item.representedObject as? String else { return }
         NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: p)])
     }
+
+    @objc private func openTour() { Tour.show() }
 
     @objc private func checkUpdates() { Updater.check(interactive: true) }
 
