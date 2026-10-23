@@ -280,7 +280,17 @@ enum Catalog {
             var ops: [Operation] = []
             if ff {
                 ops.append(editOp(video: true))
-                ops += [fitVideo(8), fitVideo(25)]
+                ops += [fitVideo(8), fitVideo(25), remux,
+                        media("720p", nil, ["-vf", "scale=-2:'min(720,ih)'", "-c:v", "libx264", "-crf", "23", "-preset", "medium",
+                                            "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart"],
+                              symbol: "rectangle.compress.vertical", id: "v-720", ext: "mp4", suffix: " 720p"),
+                        media(L("Повернуть 90°", "Rotate 90°"), nil, ["-vf", "transpose=1", "-c:v", "libx264", "-crf", "20",
+                                                                      "-pix_fmt", "yuv420p", "-c:a", "copy"],
+                              symbol: "rotate.right", id: "v-rot", ext: "mp4", suffix: L(" поворот", " rotated")),
+                        media(L("Ускорить ×2", "Speed ×2"), nil, ["-filter_complex", "[0:v]setpts=0.5*PTS[v];[0:a]atempo=2.0[a]",
+                                                                  "-map", "[v]", "-map", "[a]?", "-c:v", "libx264", "-crf", "21",
+                                                                  "-pix_fmt", "yuv420p", "-c:a", "aac"],
+                              symbol: "forward", id: "v-fast", ext: "mp4", suffix: " ×2")]
                 ops += [
                     media(L("Сжать", "Compress"), nil, ["-c:v", "libx264", "-preset", "slow", "-crf", "28", "-pix_fmt", "yuv420p",
                                                         "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart"],
@@ -450,6 +460,22 @@ enum Catalog {
     private static func fitVideo(_ mb: Int) -> Operation {
         single("vfit-\(mb)", L("До \(mb) МБ", "Under \(mb) MB"), "arrow.down.right.and.arrow.up.left.circle",
                ext: "mp4", suffix: L(" до \(mb) МБ", " \(mb)MB")) { try Extras.fitVideo($0, to: $1, maxBytes: mb * 1_000_000) }
+    }
+
+    /// MOV ⇄ MP4 (and MKV/M4V → MP4) by copying the streams: seconds, no quality loss.
+    private static let remux = Operation(id: "remux", title: L("Перепаковать", "Rewrap"), symbol: "shippingbox.and.arrow.backward") { urls in
+        try urls.map { s in
+            let target = ["mp4", "m4v"].contains(s.pathExtension.lowercased()) ? "mov" : "mp4"
+            let d = Paths.out(for: s, ext: target)
+            do {
+                try Tools.ffmpeg(["-i", s.path, "-map", "0:v?", "-map", "0:a?", "-c", "copy", "-movflags", "+faststart", d.path])
+            } catch {
+                try? FileManager.default.removeItem(at: d)
+                throw RondoError(L("Кодеки не подходят для .\(target) без перекодирования — используйте конвертацию",
+                                   "These codecs can't go into .\(target) without re-encoding; use Convert instead"))
+            }
+            return d
+        }
     }
 
     /// Operations whose point is a smaller file: the toast shows the savings.
