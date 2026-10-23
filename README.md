@@ -101,9 +101,9 @@ rondo info photo.CR3                 # camera, lens, exposure, codecs, pages…
 
 | From | To |
 |---|---|
-| Images | JPG, PNG, HEIC, AVIF, TIFF, GIF, PDF, app icons **ICNS + ICO** |
+| Images | JPG, PNG, HEIC, AVIF, **WebP** ⁵, TIFF, GIF, PDF, app icons **ICNS + ICO** |
 | 📷 Camera RAW | JPG, HEIC, **16-bit TIFF**, PNG, AVIF, keeping EXIF. Canon CR2/CR3, Nikon NEF, Sony ARW, Fuji RAF, DNG, Olympus, Panasonic and more |
-| Video ¹ | MP4, MOV, WebM, GIF, MP3 |
+| Video ¹ | MP4, MOV, WebM, GIF, MP3 · **rewrap without re-encoding** |
 | Audio ¹ | MP3, WAV, M4A, FLAC, OGG |
 | Documents | DOCX, RTF, TXT, HTML, ODT · PDF ³ · Markdown, EPUB ² |
 | Markdown ² | DOCX, HTML, EPUB, PDF ³ |
@@ -120,12 +120,12 @@ rondo info photo.CR3                 # camera, lens, exposure, codecs, pages…
 
 - **Images**: **crop** (1:1, 4:5, 9:16, 16:9… in an editor) and square, remove background, **fit under 1 / 5 / 8 / 25 MB**, shrink, rotate, flip, strip EXIF and GPS, text recognition (OCR), read QR codes, web-ready, colour palette.
 - **RAW**: crop, fit under N MB, instant preview (the camera's embedded JPEG), shot info to the clipboard (camera, lens, shutter, aperture, ISO), web-ready, palette.
-- **PDF**: explode to PNG, OCR, QR, split into pages, compress.
+- **PDF**: explode to PNG, OCR, QR, split into pages, compress, **rotate, page numbers, keep / delete pages, watermark**.
 - **Presentations** ³: explode to PNG. 16:9 slides come out at exactly **1920×1080**.
-- **Video** ¹: **fit under 8 / 25 MB** (Discord, mail), **trim and crop** (16:9, 9:16, 1:1, 4:5) in a QuickTime-style editor, compress, mute, first frame, extract subtitles, vertical **9:16** for Reels and Shorts, transcribe speech.
-- **Audio** ¹: **trim**, mono, normalize loudness, remove silence, transcribe speech.
+- **Video** ¹: **fit under 8 / 25 MB** (Discord, mail), **trim and crop** (16:9, 9:16, 1:1, 4:5) in a QuickTime-style editor, compress, mute, first frame, extract subtitles, vertical **9:16** for Reels and Shorts, **720p, rotate, 2× speed**, transcribe speech.
+- **Audio** ¹: **tags and cover art**, **trim**, mono, normalize loudness, remove silence, transcribe speech.
 - **Text**: **to UTF-8** from Windows-1251, KOI8-R, DOS-866, UTF-16 (TXT, CSV, SRT, MD, JSON…).
-- **Several files**: merge into one PDF, collage.
+- **Several files**: merge into one PDF, collage, **join videos or audio** into one file.
 - Compressing shows the savings: `1.2 MB → 340 KB (−72 %)`.
 
 </details>
@@ -133,7 +133,7 @@ rondo info photo.CR3                 # camera, lens, exposure, codecs, pages…
 <details open>
 <summary><b>⚡️ Actions</b></summary>
 
-ZIP, AirDrop, **Share** to any app, **Shelf** (a floating tray to drag files back out of), **Move to…**, copy path, reveal in Finder, **open in Terminal**, **metadata** (camera, GPS, codecs, PDF info), SHA-256, duplicate, 7Z ⁴, extract (ZIP, 7Z, RAR, TAR…), ZIP several files.
+ZIP, AirDrop, **Send to phone** (QR code, local Wi-Fi, 5–30 min), **custom icon** for a folder or file, **Share** to any app, **Shelf** (a floating tray to drag files back out of), **Move to…**, copy path, reveal in Finder, **open in Terminal**, **metadata** (camera, GPS, codecs, PDF info), SHA-256, duplicate, 7Z ⁴, extract (ZIP, 7Z, RAR, TAR…), ZIP several files.
 
 **🎛 Resolume Arena**: drop a folder of slides with ⌥ on *Arena deck*. Arena gets a new deck named after the folder, with the images and videos loaded into layer 1 in order (1, 2 … 10). Needs Arena's webserver on (Preferences → Webserver; the port is configurable in advanced settings).
 
@@ -141,7 +141,9 @@ ZIP, AirDrop, **Share** to any app, **Shelf** (a floating tray to drag files bac
 
 </details>
 
-<sub>¹ ffmpeg · ² pandoc · ³ Microsoft Office or Keynote · ⁴ sevenzip</sub>
+Also: **Undo** and drag-out right in the result notification, hints in the wheel's hub, a file card under the wheel, the wheel learns your most-used order, and a welcome tour.
+
+<sub>¹ ffmpeg · ² pandoc · ³ Microsoft Office or Keynote · ⁴ sevenzip · ⁵ webp (cwebp)</sub>
 
 ## Settings
 
