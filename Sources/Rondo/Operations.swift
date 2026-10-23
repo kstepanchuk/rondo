@@ -316,6 +316,16 @@ enum Catalog {
             var ops: [Operation] = []
             if ff {
                 ops.append(editOp(video: false))
+                ops.append(Operation(id: "tags", title: L("Теги и обложка…", "Tags & cover…"), symbol: "music.note.list",
+                                     interactive: true) { urls in
+                    guard let first = urls.first, let edit = AudioTags.edit(first) else { return [] }
+                    // The same tags and cover go to every selected track (handy for a whole album).
+                    return try urls.map { s in
+                        let d = Paths.out(for: s, ext: s.pathExtension, suffix: L(" теги", " tagged"))
+                        try AudioTags.write(s, tags: edit.tags, cover: edit.cover, to: d)
+                        return d
+                    }
+                })
                 ops += [
                     media(L("Моно", "Mono"), nil, ["-ac", "1"], symbol: "speaker.wave.1", id: "a-mono", suffix: L(" моно", " mono")),
                     media(L("Выровнять громкость", "Normalize"), nil, ["-af", "loudnorm=I=-16:TP=-1.5:LRA=11"],

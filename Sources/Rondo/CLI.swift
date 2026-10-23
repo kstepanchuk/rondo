@@ -7,7 +7,7 @@ import AppKit
 ///   rondo run img-half photo.png        run any operation by id
 ///   rondo formats                       what each file kind can become
 enum CLI {
-    static let commands: Set<String> = ["convert", "list", "run", "formats", "info", "pages", "watermark", "help", "--help", "-h", "--version"]
+    static let commands: Set<String> = ["convert", "list", "run", "formats", "info", "pages", "watermark", "tags", "help", "--help", "-h", "--version"]
 
     static func isInvocation(_ args: [String]) -> Bool {
         args.count > 1 && commands.contains(args[1])
@@ -35,6 +35,24 @@ enum CLI {
                     for f in files {
                         let d = Paths.out(for: f, ext: "pdf", suffix: (keep ? " pages " : " without ") + spec)
                         try PDFTools.select(f, pages: spec, keep: keep, to: d)
+                        print("✓ \(f.lastPathComponent) → \(d.path)")
+                    }
+                case "tags":
+                    // rondo tags file.mp3 --title T --artist A --album B --date 2026 --genre G --track 1 --cover pic.jpg
+                    var a = rest, tags: [String: String] = [:], cover: NSImage?
+                    for key in AudioTags.fields.map(\.key) + ["year"] {
+                        if let i = a.firstIndex(of: "--" + key.replacingOccurrences(of: "_", with: "-")), i + 1 < a.count {
+                            tags[key == "year" ? "date" : key] = a[i + 1]; a.removeSubrange(i...(i + 1))
+                        }
+                    }
+                    if let i = a.firstIndex(of: "--cover"), i + 1 < a.count {
+                        cover = NSImage(contentsOfFile: a[i + 1]); a.removeSubrange(i...(i + 1))
+                        if cover == nil { throw RondoError("can't read the cover image") }
+                    }
+                    let (_, files) = try parse(a)
+                    for f in files {
+                        let d = Paths.out(for: f, ext: f.pathExtension, suffix: " tagged")
+                        try AudioTags.write(f, tags: tags, cover: cover, to: d)
                         print("✓ \(f.lastPathComponent) → \(d.path)")
                     }
                 case "watermark":
@@ -82,6 +100,7 @@ enum CLI {
           rondo info <files…>                                  size, dimensions, camera, codecs, pages…
           rondo pages keep|delete "1-3,5" <pdfs…>              keep or delete PDF pages
           rondo watermark "DRAFT" <pdfs…>                      diagonal watermark on every page
+          rondo tags <audio…> --title T --artist A --cover pic.jpg   audio tags and cover art
         Results go next to each original unless --out is given. Originals are never overwritten.
         """
 
