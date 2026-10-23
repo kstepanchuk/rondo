@@ -63,10 +63,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             defer { if english { Prefs.shared.language = .system } }
             for (name, theme) in [("dark", ThemeChoice.dark), ("light", ThemeChoice.light)] {
                 Prefs.shared.theme = theme
-                let v = RadialView(frame: NSRect(x: 0, y: 0, width: 380, height: 380))
+                let v = RadialView(frame: NSRect(x: 0, y: 0, width: 380, height: 426))
                 v.palette = .current
                 v.mode = .convert
                 v.operations = Catalog.operations(kinds: [.image], mode: .convert)
+                v.files = [URL(fileURLWithPath: "/tmp/IMG_2041.heic")]
+                v.card = "IMG_2041.heic · 3,2 MB · 4032 × 3024"
                 try? v.renderPNG(hover: 1)?.write(to: dir.appendingPathComponent("menu-\(name)\(english ? "-en" : "").png"))
             }
             Prefs.shared.theme = .system

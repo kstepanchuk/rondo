@@ -65,8 +65,10 @@ final class RadialController {
     static let shared = RadialController()
 
     private let size: CGFloat = 380
+    /// Extra height under the wheel for the file card.
+    private let cardHeight: CGFloat = 46
     private lazy var panel: RadialPanel = {
-        let p = RadialPanel(contentRect: NSRect(x: 0, y: 0, width: size, height: size),
+        let p = RadialPanel(contentRect: NSRect(x: 0, y: 0, width: size, height: size + cardHeight),
                             styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         p.isOpaque = false
         p.backgroundColor = .clear
@@ -90,11 +92,15 @@ final class RadialController {
     func showForDrag(kinds: [Kind], mode: Mode) {
         files = nil
         lastModifierMode = mode
+        let dragged = NSPasteboard(name: .drag).readObjects(forClasses: [NSURL.self],
+                                                            options: [.urlReadingFileURLsOnly: true]) as? [URL] ?? []
+        loadCard(dragged)
         present(kinds: kinds, mode: mode, interactive: false)
     }
 
     func showForClick(files: [URL]) {
         self.files = files
+        loadCard(files)
         present(kinds: files.map(Kind.of), mode: .convert, interactive: true)
         NSApp.activate(ignoringOtherApps: true)
         panel.makeKey()
@@ -106,17 +112,34 @@ final class RadialController {
         view.palette = .current
         setMode(mode)
         let m = NSEvent.mouseLocation
-        var frame = NSRect(x: m.x - size / 2, y: m.y - size / 2, width: size, height: size)
+        // The wheel's centre sits under the cursor; the card hangs below it.
+        let h = size + cardHeight
+        var frame = NSRect(x: m.x - size / 2, y: m.y - (h - size / 2), width: size, height: h)
         if let screen = NSScreen.screens.first(where: { $0.frame.contains(m) }) {
             let vf = screen.visibleFrame
             frame.origin.x = min(max(frame.minX, vf.minX), vf.maxX - size)
-            frame.origin.y = min(max(frame.minY, vf.minY), vf.maxY - size)
+            frame.origin.y = min(max(frame.minY, vf.minY), vf.maxY - h)
         }
         panel.setFrame(frame, display: true)
         panel.alphaValue = 1
         view.animateIn()
         panel.orderFrontRegardless()
         isVisible = true
+    }
+
+    /// File facts for the card under the wheel, read off the main thread.
+    private func loadCard(_ urls: [URL]) {
+        view.files = urls
+        view.card = urls.first?.lastPathComponent
+        guard !urls.isEmpty else { return }
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let text = Hints.card(for: urls)
+            DispatchQueue.main.async {
+                guard let self, self.view.files == urls else { return }
+                self.view.card = text
+                self.view.needsDisplay = true
+            }
+        }
     }
 
     // MARK: Modes and pages
@@ -202,8 +225,12 @@ final class RadialView: NSView {
     var hovered: Int?
     var interactive = false
     var palette = Palette.current
+    /// Dragged or selected files, and the card text describing them.
+    var files: [URL] = []
+    var card: String?
 
-    private var center: CGPoint { CGPoint(x: bounds.midX, y: bounds.midY) }
+    /// The wheel occupies the top square; the file card the strip below it.
+    private var center: CGPoint { CGPoint(x: bounds.midX, y: bounds.height - bounds.width / 2) }
     private var outer: CGFloat { bounds.width / 2 - 14 }
     private let inner: CGFloat = 58
     private var trackingArea: NSTrackingArea?
@@ -402,8 +429,48 @@ final class RadialView: NSView {
             .draw(in: NSRect(x: c.x - width / 2, y: c.y - 30, width: width, height: 30))
     }
 
-    private func drawCenter(sub: String?) {
+    /// The strip under the wheel: what's being held and, on a Convert sector, the result's name.
+    private func drawCard() {
+        var text = card ?? ""
+        if let h = hovered, h < operations.count, let name = Hints.resultName(for: files, op: operations[h], mode: mode) {
+            text += (text.isEmpty ? "" : "  →  ") + name
+        }
+        guard !text.isEmpty else { return }
         let p = palette
+        let style = NSMutableParagraphStyle()
+        style.alignment = .center
+        style.lineBreakMode = .byTruncatingMiddle
+        let attr = NSAttributedString(string: text, attributes: [
+            .font: NSFont.systemFont(ofSize: 11, weight: .medium), .foregroundColor: p.text, .paragraphStyle: style])
+        let w = min(bounds.width - 24, attr.size().width + 28)
+        let pill = NSRect(x: bounds.midX - w / 2, y: 8, width: w, height: 26)
+        p.background.setFill()
+        NSBezierPath(roundedRect: pill, xRadius: 13, yRadius: 13).fill()
+        p.stroke.setStroke()
+        NSBezierPath(roundedRect: pill.insetBy(dx: 0.5, dy: 0.5), xRadius: 13, yRadius: 13).stroke()
+        attr.draw(in: pill.insetBy(dx: 12, dy: 5))
+    }
+
+    private func drawCenter(sub: String?) {
+        drawCard()
+        let p = palette
+        if let h = hovered, h < operations.count, let hint = Hints.text(for: operations[h].id) {
+            // Hovered sector: its name and what it does, instead of the mode.
+            let r = inner
+            let circle = NSBezierPath(ovalIn: NSRect(x: center.x - r, y: center.y - r, width: r * 2, height: r * 2))
+            p.sector.setFill(); circle.fill()
+            p.stroke.setStroke(); circle.lineWidth = 1; circle.stroke()
+            let style = NSMutableParagraphStyle()
+            style.alignment = .center
+            style.lineBreakMode = .byWordWrapping
+            NSAttributedString(string: operations[h].title, attributes: [
+                .font: NSFont.systemFont(ofSize: 12, weight: .bold), .foregroundColor: p.accent, .paragraphStyle: style,
+            ]).draw(in: NSRect(x: center.x - r + 6, y: center.y + 4, width: r * 2 - 12, height: 18))
+            NSAttributedString(string: hint, attributes: [
+                .font: NSFont.systemFont(ofSize: 9.5), .foregroundColor: p.secondaryText, .paragraphStyle: style,
+            ]).draw(in: NSRect(x: center.x - r + 8, y: center.y - 36, width: r * 2 - 16, height: 40))
+            return
+        }
         let r = inner
         let circle = NSBezierPath(ovalIn: NSRect(x: center.x - r, y: center.y - r, width: r * 2, height: r * 2))
         p.sector.setFill()
