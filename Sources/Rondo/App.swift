@@ -281,6 +281,7 @@ struct SettingsView: View {
                 tool("ffmpeg", Tools.ffmpeg != nil, L("аудио и видео", "audio & video"), "ffmpeg")
                 tool("pandoc", Tools.pandoc != nil, "Markdown, EPUB", "pandoc")
                 tool("7-Zip", Tools.sevenZip != nil, L("архивы 7z", "7z archives"), "sevenzip")
+                tool("WebP", Tools.cwebp != nil, L("запись в WebP", "writing WebP"), "webp")
                 tool("Microsoft Word", Tools.word, "DOCX → PDF", nil)
                 tool("Microsoft Excel", Tools.excel, "XLSX ⇄ CSV, PDF", nil)
                 tool("LibreOffice", Tools.libreOffice != nil, L("офисные документы → PDF", "Office documents → PDF"), "--cask libreoffice")

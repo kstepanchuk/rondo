@@ -22,6 +22,8 @@ enum Tools {
     static var ffmpeg: String? { find("ffmpeg") }
     static var pandoc: String? { find("pandoc") }
     static var sevenZip: String? { find("7zz", "7z") }
+    /// Google's WebP encoder (brew install webp); macOS can read WebP but not write it.
+    static var cwebp: String? { find("cwebp") }
     /// LibreOffice's open-source headless converter (Homebrew cask: libreoffice).
     static var libreOffice: String? {
         if let executable = find("soffice") { return executable }

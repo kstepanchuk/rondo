@@ -136,6 +136,7 @@ enum Catalog {
         case .image:
             return [
                 image("JPG", .jpeg), image("PNG", .png), image("HEIC", .heic),
+            ] + (Tools.cwebp != nil ? [webp] : []) + [
             ] + (Images.canWriteAVIF ? [image("AVIF", UTType("public.avif")!)] : []) + [
                 image("TIFF", .tiff), image("GIF", .gif),
                 image("PDF", .pdf, symbol: "doc.richtext"),
@@ -144,7 +145,7 @@ enum Catalog {
                 },
             ]
         case .raw:
-            return [rawConv("JPG", .jpeg), rawConv("HEIC", .heic), rawConv(L("TIFF 16 бит", "TIFF 16-bit"), .tiff, ext: "tiff"),
+            return (Tools.cwebp != nil ? [webp] : []) + [rawConv("JPG", .jpeg), rawConv("HEIC", .heic), rawConv(L("TIFF 16 бит", "TIFF 16-bit"), .tiff, ext: "tiff"),
                     rawConv("PNG", .png)] + (Images.canWriteAVIF ? [rawConv("AVIF", UTType("public.avif")!)] : [])
         case .video:
             guard ff else { return [] }
@@ -468,6 +469,16 @@ enum Catalog {
     private static func fitVideo(_ mb: Int) -> Operation {
         single("vfit-\(mb)", L("До \(mb) МБ", "Under \(mb) MB"), "arrow.down.right.and.arrow.up.left.circle",
                ext: "mp4", suffix: L(" до \(mb) МБ", " \(mb)MB")) { try Extras.fitVideo($0, to: $1, maxBytes: mb * 1_000_000) }
+    }
+
+    /// WebP through cwebp. Anything ImageIO can read (HEIC, RAW…) goes through a temporary PNG first.
+    private static let webp = single("webp", "WebP", "photo", ext: "webp") { s, d in
+        guard let cwebp = Tools.cwebp else { throw RondoError(L("Нужен cwebp: brew install webp", "cwebp required: brew install webp")) }
+        let tmp = Paths.temp()
+        defer { try? FileManager.default.removeItem(at: tmp) }
+        let png = tmp.appendingPathComponent("in.png")
+        try Images.write(try PhotoCrop.upright(s), to: png, type: .png)
+        try Tools.run(cwebp, ["-quiet", "-q", "\(Int(Settings.imageQuality * 100))", "-metadata", "icc", png.path, "-o", d.path])
     }
 
     /// Keep or delete pages; asks which (e.g. "1-3, 5").
