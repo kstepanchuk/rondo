@@ -396,6 +396,12 @@ enum Catalog {
             Extras.airDrop(urls)
             return []
         }
+        let phone = Operation(id: "phone", title: L("На телефон", "To phone"), symbol: "qrcode") { urls in
+            var failure: Error?
+            DispatchQueue.main.sync { do { try PhoneShare.start(urls) } catch { failure = error } }
+            if let failure { throw failure }
+            return []
+        }
         let share = Operation(id: "share", title: L("Поделиться", "Share"), symbol: "square.and.arrow.up") { urls in
             FileActions.share(urls)
             return []
@@ -437,7 +443,7 @@ enum Catalog {
         var ops: [Operation] = []
         if k == .archive { ops.append(unpack) }
         if k == .folder { ops.append(arenaDeck) }
-        ops += [zip, airdrop, share, shelf, move, path, reveal, terminal, meta]
+        ops += [zip, airdrop, phone, share, shelf, move, path, reveal, terminal, meta]
         if k != .folder { ops.append(sha) }
         ops.append(dup)
         if let sevenZip { ops.append(sevenZip) }

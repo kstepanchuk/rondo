@@ -17,6 +17,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if let i = args.firstIndex(of: "--self-test"), i + 1 < args.count {
             return SelfTest.run(dir: URL(fileURLWithPath: args[i + 1]), office: args.contains("--office"), ci: args.contains("--ci"))
         }
+        if let i = args.firstIndex(of: "--phone-test"), i + 2 < args.count {
+            // Shares <file> for <seconds> and prints the URL (for testing the server).
+            _ = NSApplication.shared
+            setenv("RONDO_PRINT_SHARE_URL", "1", 1)
+            do { try PhoneShare.start([URL(fileURLWithPath: args[i + 1])]) } catch { print("FAIL \(error.localizedDescription)"); exit(1) }
+            RunLoop.main.run(until: Date().addingTimeInterval(Double(args[i + 2]) ?? 15))
+            exit(0)
+        }
         if let i = args.firstIndex(of: "--watch-test"), i + 3 < args.count {
             // Watches <dir> with <action> for <seconds>, for testing (rules go to this binary's defaults).
             _ = NSApplication.shared
