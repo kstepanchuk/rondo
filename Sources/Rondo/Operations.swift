@@ -353,7 +353,14 @@ enum Catalog {
                     },
                     single("pdf-small", L("Сжать", "Compress"), "arrow.down.circle", ext: "pdf", suffix: L(" сжатый", " small")) {
                         try PDF.compress($0, to: $1)
-                    }]
+                    },
+                    single("pdf-rot", L("Повернуть", "Rotate"), "rotate.right", ext: "pdf", suffix: L(" поворот", " rotated")) {
+                        try PDFTools.rotate($0, to: $1)
+                    },
+                    single("pdf-num", L("Номера страниц", "Page numbers"), "number.square", ext: "pdf", suffix: L(" с номерами", " numbered")) {
+                        try PDFTools.number($0, to: $1)
+                    },
+                    pdfPages(keep: true), pdfPages(keep: false), pdfWatermark]
         case .presentation:
             guard Tools.powerPoint || Tools.keynote || Tools.libreOffice != nil else { return [] }
             return [explodeSlides]
@@ -461,6 +468,34 @@ enum Catalog {
     private static func fitVideo(_ mb: Int) -> Operation {
         single("vfit-\(mb)", L("До \(mb) МБ", "Under \(mb) MB"), "arrow.down.right.and.arrow.up.left.circle",
                ext: "mp4", suffix: L(" до \(mb) МБ", " \(mb)MB")) { try Extras.fitVideo($0, to: $1, maxBytes: mb * 1_000_000) }
+    }
+
+    /// Keep or delete pages; asks which (e.g. "1-3, 5").
+    private static func pdfPages(keep: Bool) -> Operation {
+        Operation(id: keep ? "pdf-pages" : "pdf-delete",
+                  title: keep ? L("Оставить страницы…", "Keep pages…") : L("Удалить страницы…", "Delete pages…"),
+                  symbol: keep ? "doc.on.doc" : "doc.badge.ellipsis", interactive: true) { urls in
+            guard let pages = Ask.text(keep ? L("Какие страницы оставить?", "Which pages to keep?")
+                                            : L("Какие страницы удалить?", "Which pages to delete?"),
+                                       L("Номера через запятую, диапазоны через дефис.", "Numbers separated by commas, ranges with a dash."),
+                                       placeholder: "1-3, 5") else { return [] }
+            return try urls.map { s in
+                let d = Paths.out(for: s, ext: "pdf", suffix: keep ? L(" страницы ", " pages ") + pages : L(" без ", " without ") + pages)
+                try PDFTools.select(s, pages: pages, keep: keep, to: d)
+                return d
+            }
+        }
+    }
+
+    private static let pdfWatermark = Operation(id: "pdf-mark", title: L("Водяной знак…", "Watermark…"),
+                                                symbol: "seal", interactive: true) { urls in
+        guard let text = Ask.text(L("Текст водяного знака", "Watermark text"), "",
+                                  placeholder: L("ЧЕРНОВИК", "DRAFT")) else { return [] }
+        return try urls.map { s in
+            let d = Paths.out(for: s, ext: "pdf", suffix: L(" со знаком", " watermarked"))
+            try PDFTools.watermark(s, text: text, to: d)
+            return d
+        }
     }
 
     /// Several clips or tracks → one file, in name order. Same codecs are joined without

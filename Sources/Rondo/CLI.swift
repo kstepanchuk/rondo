@@ -7,7 +7,7 @@ import AppKit
 ///   rondo run img-half photo.png        run any operation by id
 ///   rondo formats                       what each file kind can become
 enum CLI {
-    static let commands: Set<String> = ["convert", "list", "run", "formats", "info", "help", "--help", "-h", "--version"]
+    static let commands: Set<String> = ["convert", "list", "run", "formats", "info", "pages", "watermark", "help", "--help", "-h", "--version"]
 
     static func isInvocation(_ args: [String]) -> Bool {
         args.count > 1 && commands.contains(args[1])
@@ -27,6 +27,24 @@ enum CLI {
                 case "list": try list(rest)
                 case "run": try runOp(rest)
                 case "formats": formats()
+                case "pages":
+                    // rondo pages keep|delete "1-3,5" file.pdf…
+                    guard rest.count >= 3, ["keep", "delete"].contains(rest[0]) else { throw RondoError(usage) }
+                    let keep = rest[0] == "keep", spec = rest[1]
+                    let (_, files) = try parse(Array(rest.dropFirst(2)))
+                    for f in files {
+                        let d = Paths.out(for: f, ext: "pdf", suffix: (keep ? " pages " : " without ") + spec)
+                        try PDFTools.select(f, pages: spec, keep: keep, to: d)
+                        print("✓ \(f.lastPathComponent) → \(d.path)")
+                    }
+                case "watermark":
+                    guard rest.count >= 2 else { throw RondoError(usage) }
+                    let (_, files) = try parse(Array(rest.dropFirst()))
+                    for f in files {
+                        let d = Paths.out(for: f, ext: "pdf", suffix: " watermarked")
+                        try PDFTools.watermark(f, text: rest[0], to: d)
+                        print("✓ \(f.lastPathComponent) → \(d.path)")
+                    }
                 case "info":
                     let (_, files) = try parse(rest)
                     for f in files {
@@ -62,6 +80,8 @@ enum CLI {
           rondo run <operation-id> [--out <dir>] <files…>      e.g. rondo run img-half photo.png
           rondo formats                                        conversions per file kind
           rondo info <files…>                                  size, dimensions, camera, codecs, pages…
+          rondo pages keep|delete "1-3,5" <pdfs…>              keep or delete PDF pages
+          rondo watermark "DRAFT" <pdfs…>                      diagonal watermark on every page
         Results go next to each original unless --out is given. Originals are never overwritten.
         """
 
