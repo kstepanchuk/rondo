@@ -17,6 +17,7 @@ enum Runner {
 
     static func run(_ op: Operation, _ urls: [URL], at point: NSPoint? = nil) {
         busy += 1
+        Usage.record(op.id, kinds: urls.map(Kind.of))
         let ring = op.interactive ? nil : point.map(ProgressRing.init(at:))
         queue.async {
             let result = Result { try op.perform(urls) }

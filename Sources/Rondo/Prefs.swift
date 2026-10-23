@@ -25,6 +25,10 @@ final class Prefs: ObservableObject {
     @Published var docEngine: DocEngine {
         didSet { d.set(docEngine.rawValue, forKey: "docEngine") }
     }
+    /// Move the operations you use most to the front of the wheel.
+    @Published var learnOrder: Bool {
+        didSet { d.set(learnOrder, forKey: "learnOrder") }
+    }
     @Published var history: [String] {
         didSet { d.set(history, forKey: "history") }
     }
@@ -35,6 +39,7 @@ final class Prefs: ObservableObject {
         revealResult = d.object(forKey: "revealResult") as? Bool ?? false
         saveNextToSource = d.object(forKey: "saveNextToSource") as? Bool ?? true
         docEngine = DocEngine(rawValue: d.string(forKey: "docEngine") ?? "") ?? .auto
+        learnOrder = d.object(forKey: "learnOrder") as? Bool ?? true
         history = d.stringArray(forKey: "history") ?? []
     }
 
@@ -205,4 +210,28 @@ enum Settings {
     }
     static func isHidden(_ id: String) -> Bool { a.enabled && a.hidden.contains(id) }
     static func order(_ key: String) -> [String]? { a.enabled ? a.order[key] : nil }
+}
+
+
+/// How often each operation was picked, per file kind and wheel ("image.convert" → id → n).
+enum Usage {
+    private static let key = "usage"
+    private static var cache: [String: [String: Int]] =
+        UserDefaults.standard.dictionary(forKey: key) as? [String: [String: Int]] ?? [:]
+
+    static func count(_ layout: String, _ id: String) -> Int { cache[layout]?[id] ?? 0 }
+
+    static func record(_ id: String, kinds: [Kind]) {
+        let unique = Set(kinds)
+        guard unique.count == 1, let kind = unique.first, !id.hasPrefix("__"),
+              let mode = Catalog.mode(of: id, kinds: [kind]) else { return }
+        let layout = Catalog.layoutKey(kind, mode)
+        cache[layout, default: [:]][id, default: 0] += 1
+        UserDefaults.standard.set(cache, forKey: key)
+    }
+
+    static func reset() {
+        cache = [:]
+        UserDefaults.standard.removeObject(forKey: key)
+    }
 }

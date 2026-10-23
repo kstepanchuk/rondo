@@ -96,11 +96,23 @@ enum Catalog {
             let rank = Dictionary(uniqueKeysWithValues: order.enumerated().map { ($1, $0) })
             all = all.enumerated().sorted { (rank[$0.element.id] ?? 1000 + $0.offset) < (rank[$1.element.id] ?? 1000 + $1.offset) }
                 .map(\.element)
+        } else if unique.count == 1, Prefs.shared.learnOrder {
+            // The wheel learns: what you pick most for this kind of file moves to the front.
+            let key = layoutKey(first, mode)
+            all = all.enumerated().sorted { a, b in
+                let ua = Usage.count(key, a.element.id), ub = Usage.count(key, b.element.id)
+                return ua != ub ? ua > ub : a.offset < b.offset
+            }.map(\.element)
         }
         return all
     }
 
     static func layoutKey(_ kind: Kind, _ mode: Mode) -> String { "\(kind).\(mode)" }
+
+    /// Which mode an operation belongs to for these kinds (for usage counting).
+    static func mode(of id: String, kinds: [Kind]) -> Mode? {
+        Mode.allCases.first { m in operations(kinds: kinds, mode: m).contains { $0.id == id } }
+    }
 
     /// Every operation for a kind/mode, ignoring hidden/order (for the settings editor).
     static func allOperations(_ kind: Kind, _ mode: Mode) -> [Operation] {

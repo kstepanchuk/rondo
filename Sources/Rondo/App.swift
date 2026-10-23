@@ -252,6 +252,11 @@ struct SettingsView: View {
                     }
                 Toggle(L("Показывать результат в Finder", "Reveal result in Finder"), isOn: $prefs.revealResult)
                 HStack {
+                    Toggle(L("Частые операции — первыми", "Most-used operations first"), isOn: $prefs.learnOrder)
+                    Spacer()
+                    Button(L("Сбросить", "Reset")) { Usage.reset() }.controlSize(.small)
+                }
+                HStack {
                     Toggle(L("Проверять обновления раз в день", "Check for updates daily"), isOn: $autoUpdate)
                         .onChange(of: autoUpdate) { Updater.autoCheck = $0 }
                     Spacer()
