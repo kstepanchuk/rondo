@@ -61,6 +61,26 @@ printf 'Съешь же ещё этих мягких французских бу
 check "Windows-1251 → UTF-8" 'grep -q "французских" "$D/cp1251 (UTF-8).txt"'
 check "KOI8-R → UTF-8" 'grep -q "французских" "$D/koi8 (UTF-8).txt"'
 
+echo "== v0.2.1 tools"
+T="$(mktemp -d)"
+"$R" run merge "$S/photo.png" "$S/doc.pdf" --out "$T" >/dev/null 2>&1 || true
+P="$(ls "$T"/*.pdf 2>/dev/null | head -1)"
+check "PDF: keep pages" '"$R" pages keep 1 "$P" >/dev/null && "$R" info "$T"/*pages*.pdf | grep -q "Страниц: 1\|Pages: 1"'
+check "PDF: watermark" '"$R" watermark DRAFT "$P" >/dev/null && [ -s "$(ls "$T"/*watermarked*.pdf)" ]'
+check "PDF: page numbers" '"$R" run pdf-num "$P" >/dev/null'
+mkdir -p "$T/folder"
+check "custom folder icon" '"$R" icon "$S/photo.png" "$T/folder" >/dev/null && ls -a "$T/folder" | grep -q "^Icon"'
+if command -v ffmpeg >/dev/null; then
+  cp "$S/video.mp4" "$T/a.mp4"; cp "$S/video.mp4" "$T/b.mp4"
+  check "join videos" '"$R" run join "$T/a.mp4" "$T/b.mp4" --out "$T/j" >/dev/null && [ -s "$T/j/"*.mp4 ]'
+  check "rewrap MP4 → MOV" '"$R" run remux "$T/a.mp4" --out "$T/r" >/dev/null && [ -s "$T/r/a.mov" ]'
+  ffmpeg -loglevel error -f lavfi -i sine=f=440 -t 1 -c:a libmp3lame "$T/song.mp3"
+  check "audio tags and cover" '"$R" tags "$T/song.mp3" --title "Ёжик" --cover "$S/photo.png" >/dev/null && ffprobe -v error -show_entries format_tags=title -of csv=p=0 "$T/song tagged.mp3" | grep -q "Ёжик"'
+fi
+if command -v cwebp >/dev/null; then
+  check "WebP" '"$R" convert --to webp "$S/photo.png" --out "$T/w" >/dev/null && [ -s "$T/w/photo.webp" ]'
+fi
+
 if [ -d dist/Rondo.app ]; then
   echo "== App bundle"
   check "Shortcuts actions in the bundle" 'grep -q "ConvertToJPEGIntent" dist/Rondo.app/Contents/Resources/Metadata.appintents/extract.actionsdata'

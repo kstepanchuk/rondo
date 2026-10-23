@@ -16,8 +16,8 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: false
-      - name: Install ffmpeg (video and audio tests)
-        run: brew install ffmpeg
+      - name: Install ffmpeg and webp (video, audio and WebP tests)
+        run: brew install ffmpeg webp
       - name: Build app (universal, App Intents metadata, DMG)
         run: ./scripts/build.sh 0.0.0-ci
       - name: End-to-end tests
